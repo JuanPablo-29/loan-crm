@@ -20,8 +20,15 @@ export const config = {
   externalApplicationUrl: req("EXTERNAL_APPLICATION_URL", "https://example.com/apply"),
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   smtp: {
+    disabled: String(process.env.SMTP_DISABLED ?? "").toLowerCase() === "true",
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE ? String(process.env.SMTP_SECURE).toLowerCase() === "true" : undefined,
+    requireTls:
+      process.env.SMTP_REQUIRE_TLS ? String(process.env.SMTP_REQUIRE_TLS).toLowerCase() === "true" : undefined,
+    connectionTimeoutMs: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS ?? 15000),
+    greetingTimeoutMs: Number(process.env.SMTP_GREETING_TIMEOUT_MS ?? 10000),
+    socketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS ?? 20000),
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM ?? "Loan Team <noreply@example.com>",
@@ -50,3 +57,16 @@ export const config = {
     maxPerWindow: Number(process.env.RATE_LIMIT_MAX_PER_WINDOW ?? 120),
   },
 };
+
+if (!config.smtp.disabled && (config.smtp.host || config.smtp.user)) {
+  const secure = config.smtp.secure ?? config.smtp.port === 465;
+  if (config.smtp.port === 465 && !secure) {
+    console.warn("[config] SMTP_PORT=465 usually requires SMTP_SECURE=true");
+  }
+  if (config.smtp.port === 587 && secure) {
+    console.warn("[config] SMTP_PORT=587 usually expects SMTP_SECURE=false with STARTTLS");
+  }
+  if (!config.smtp.pass) {
+    console.warn("[config] SMTP_PASS is empty; SMTP auth will likely fail");
+  }
+}

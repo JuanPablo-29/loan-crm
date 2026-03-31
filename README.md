@@ -21,6 +21,8 @@ Internal-only system for loan officers. It polls a Gmail inbox, ingests inbound 
 
    - `OPENAI_API_KEY` — AI parsing + reply generation
    - `SMTP_*` — outbound email delivery
+     - `SMTP_DISABLED=true` temporarily disables network SMTP and runs log-only mode (useful while debugging Railway SMTP connectivity)
+     - `SMTP_PORT=587` + `SMTP_SECURE=false` + `SMTP_REQUIRE_TLS=true` (STARTTLS), or `SMTP_PORT=465` + `SMTP_SECURE=true` (implicit TLS)
    - `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` — Gmail polling
    - `AUTO_POLL_MINUTES` — scheduler interval (2-5, default 3)
    - `EXTERNAL_APPLICATION_URL` — final destination for tracked clicks
@@ -105,6 +107,16 @@ flowchart LR
 - Keep only `GET /r/:token` public. Dashboard and `/api/*` should require authentication.
 - Tune `MAX_EMAILS_PER_LEAD_PER_DAY` and `MIN_MINUTES_BETWEEN_SENDS` for compliance.
 - Use managed Postgres/Redis or highly available equivalents.
+
+### Railway SMTP timeout checklist (`ETIMEDOUT`, `command: CONN`)
+
+- Verify SMTP settings are on the **API service** (not web): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
+- Match TLS mode to provider:
+  - `587`: `SMTP_SECURE=false`, `SMTP_REQUIRE_TLS=true`
+  - `465`: `SMTP_SECURE=true`
+- Confirm sender/domain verification and provider-specific SMTP/app password requirements are complete.
+- If timeouts persist, test with a known-good SMTP relay endpoint (SendGrid/Mailgun/Resend SMTP) to isolate provider restrictions.
+- Keep ingestion/scheduler healthy while debugging by setting `SMTP_DISABLED=true` (emails are logged, not sent).
 
 ## Go-live verification checklist
 
