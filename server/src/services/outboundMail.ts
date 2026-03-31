@@ -1,27 +1,4 @@
-import nodemailer from "nodemailer";
-import { config } from "../config.js";
-
-let transporter: nodemailer.Transporter | null = null;
-
-function getTransporter(): nodemailer.Transporter | null {
-  if (config.smtp.disabled) return null;
-  if (!config.smtp.host || !config.smtp.user) return null;
-  if (!transporter) {
-    const secure = config.smtp.secure ?? config.smtp.port === 465;
-    transporter = nodemailer.createTransport({
-      host: config.smtp.host,
-      port: config.smtp.port,
-      secure,
-      requireTLS: config.smtp.requireTls,
-      ...(config.smtp.forceIpv4 ? { family: 4 as const } : {}),
-      connectionTimeout: config.smtp.connectionTimeoutMs,
-      greetingTimeout: config.smtp.greetingTimeoutMs,
-      socketTimeout: config.smtp.socketTimeoutMs,
-      auth: { user: config.smtp.user, pass: config.smtp.pass },
-    });
-  }
-  return transporter;
-}
+import { sendEmail } from "./email.js";
 
 export type SendMailInput = {
   to: string;
@@ -30,30 +7,37 @@ export type SendMailInput = {
   html?: string;
 };
 
-export async function sendMail(input: SendMailInput): Promise<{ ok: boolean; reason?: string }> {
-  const t = getTransporter();
-  if (!t) {
-    console.warn("[mail] SMTP not configured — logging only:", input.subject);
-    return { ok: true, reason: "no_smtp_logged" };
-  }
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
+function textToHtml(text: string): string {
+  return `<div style="font-family:Arial,sans-serif;white-space:pre-wrap;">${escapeHtml(text)}</div>`;
+}
+
+export async function sendMail(input: SendMailInput): Promise<{ ok: boolean; reason?: string }> {
+  if (!input.html && !input.text) {
+    return { ok: false, reason: "empty_body" };
+  }
   try {
-    await t.sendMail({
-      from: config.smtp.from,
+    await sendEmail({
       to: input.to,
       subject: input.subject,
-      text: input.text,
-      html: input.html,
+      html: input.html ?? textToHtml(input.text),
     });
     return { ok: true };
   } catch (err) {
-    const e = err as { code?: string; message?: string };
-    console.error("[mail] SMTP send failed", {
-      code: e.code ?? "UNKNOWN",
-      message: e.message ?? "Unknown error",
-      host: config.smtp.host,
-      port: config.smtp.port,
-    });
-    return { ok: false, reason: `smtp_${(e.code ?? "error").toLowerCase()}` };
+    const message = err instanceof Error ? err.message : "Unknown outbound send error";
+    if (message.includes("RESEND_API_KEY is not configured")) {
+      console.warn("[mail] Resend not configured — skipping send");
+      return { ok: true, reason: "no_email_logged" };
+    }
+    console.error("[mail] Outbound send failed", { to: input.to, subject: input.subject, message });
+    return { ok: false, reason: "email_send_failed" };
   }
 }

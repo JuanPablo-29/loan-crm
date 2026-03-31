@@ -1,6 +1,6 @@
 # Loan CRM — automated email follow-up (MVP)
 
-Internal-only system for loan officers. It polls a Gmail inbox, ingests inbound leads, writes lead threads to PostgreSQL, sends AI-assisted SMTP replies, and schedules day 1/3/7 follow-ups with BullMQ.
+Internal-only system for loan officers. It polls a Gmail inbox, ingests inbound leads, writes lead threads to PostgreSQL, sends AI-assisted replies via Resend API, and schedules day 1/3/7 follow-ups with BullMQ.
 
 ## Prerequisites
 
@@ -20,9 +20,7 @@ Internal-only system for loan officers. It polls a Gmail inbox, ingests inbound 
    Copy `server/.env.example` to `server/.env` and set at least:
 
    - `OPENAI_API_KEY` — AI parsing + reply generation
-   - `SMTP_*` — outbound email delivery
-     - `SMTP_DISABLED=true` temporarily disables network SMTP and runs log-only mode (useful while debugging Railway SMTP connectivity)
-     - `SMTP_PORT=587` + `SMTP_SECURE=false` + `SMTP_REQUIRE_TLS=true` (STARTTLS), or `SMTP_PORT=465` + `SMTP_SECURE=true` (implicit TLS)
+   - `RESEND_API_KEY`, `EMAIL_FROM` — outbound email delivery
    - `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` — Gmail polling
    - `AUTO_POLL_MINUTES` — scheduler interval (2-5, default 3)
    - `EXTERNAL_APPLICATION_URL` — final destination for tracked clicks
@@ -80,7 +78,7 @@ Invoke-RestMethod -Method POST -Uri "http://localhost:4000/api/ingest/email" `
 | Auth | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` |
 | Leads | `GET /api/leads`, `GET /api/leads/:id`, `GET /api/leads/:id/emails`, `PATCH /api/leads/:id`, `PATCH /api/leads/:id/archive`, `GET /api/leads/export/csv` |
 | Ingest | `POST /api/ingest/email` (auth required) |
-| Mail poll | `POST /api/mail/gmail` (auth required) |
+| Mail poll | `POST /api/mail/gmail`, `POST /api/mail/test` (auth required) |
 | Redirect tracking | `GET /r/:token` |
 
 ## Architecture (high level)
@@ -91,8 +89,8 @@ flowchart LR
   Poller --> Ingest[Ingest service]
   Ingest --> PG[(PostgreSQL)]
   Ingest --> AI[OpenAI]
-  AI --> SMTP[SMTP / log]
-  Worker[BullMQ worker] --> SMTP
+  AI --> Mail[Resend API]
+  Worker[BullMQ worker] --> Mail
   Worker --> PG
   Web[Next.js] --> API[Express API]
   API --> PG
@@ -108,16 +106,11 @@ flowchart LR
 - Tune `MAX_EMAILS_PER_LEAD_PER_DAY` and `MIN_MINUTES_BETWEEN_SENDS` for compliance.
 - Use managed Postgres/Redis or highly available equivalents.
 
-### Railway SMTP timeout checklist (`ETIMEDOUT`, `command: CONN`)
+### Outbound mail setup (Resend API)
 
-- Verify SMTP settings are on the **API service** (not web): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
-- Match TLS mode to provider:
-  - `587`: `SMTP_SECURE=false`, `SMTP_REQUIRE_TLS=true`
-  - `465`: `SMTP_SECURE=true`
-- For **Gmail** on some cloud hosts, DNS may prefer IPv6 (`AAAA`) while outbound IPv6 is broken, causing connect timeouts. Set `SMTP_FORCE_IPV4=true` on the API service and redeploy.
-- Confirm sender/domain verification and provider-specific SMTP/app password requirements are complete.
-- If timeouts persist, test with a known-good SMTP relay endpoint (SendGrid/Mailgun/Resend SMTP) to isolate provider restrictions.
-- Keep ingestion/scheduler healthy while debugging by setting `SMTP_DISABLED=true` (emails are logged, not sent).
+- Set outbound env vars on the **API service**: `RESEND_API_KEY`, `EMAIL_FROM`.
+- Verify your sender/domain in Resend before production sending.
+- Use `POST /api/mail/test` (authenticated) to validate delivery after deploy.
 
 ## Go-live verification checklist
 

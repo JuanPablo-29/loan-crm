@@ -58,7 +58,7 @@ export async function sendToLead(input: SendToLeadInput): Promise<{ ok: boolean;
     text,
   });
 
-  if (!mail.ok && mail.reason !== "no_smtp_logged") return mail;
+  if (!mail.ok && mail.reason !== "no_email_logged") return mail;
 
   await insertEmail({
     lead_id: input.lead.id,
@@ -66,7 +66,7 @@ export async function sendToLead(input: SendToLeadInput): Promise<{ ok: boolean;
     subject: input.subject,
     body_text: text,
     template_key: input.templateKey,
-    metadata: { smtp: mail.reason === "no_smtp_logged" ? "skipped_dev" : "sent" },
+    metadata: { smtp: mail.reason === "no_email_logged" ? "skipped_dev" : "sent" },
   });
 
   await setLastOutbound(input.lead.id);
