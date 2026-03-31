@@ -37,7 +37,7 @@ export default function Home() {
         </div>
         <div style={{ justifySelf: "center", width: "100%", maxWidth: 280 }}>
           <img
-            src="https://placehold.co/560x680?text=Kari+Pastrana"
+            src="/kari.jpg"
             alt="Kari Pastrana profile placeholder"
             style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", display: "block" }}
           />
@@ -47,9 +47,25 @@ export default function Home() {
       <section className="card" style={{ marginTop: "1rem" }}>
         <h2 style={{ marginTop: 0 }}>About</h2>
         <p style={{ marginBottom: 0, lineHeight: 1.65 }}>
-          Kari Pastrana is a preferred lending partner focused on clear communication, practical mortgage
-          planning, and timely pre-approval support. From first-time buyers to returning homeowners, Kari and
-          Novus Home Mortgage provide guidance tailored to your goals and timeline.
+          Greetings - it's a pleasure to meet you! My name is Kari Pastrana, but please call me Kari. I am a
+          dedicated mortgage professional committed to helping clients navigate financing with confidence and
+          clarity.
+          <br />
+          <br />
+          I specialize in a wide range of loan programs, including traditional loans, Non-QM options, and DSR
+          loans, allowing me to serve clients with diverse financial situations. Whether you are a first-time
+          buyer, investor, or self-employed borrower, I work to find tailored solutions that fit your needs. I
+          am also licensed to assist clients in all 50 states, providing flexibility no matter where you are
+          purchasing or refinancing.
+          <br />
+          <br />
+          My approach is rooted in putting clients first, maintaining clear communication, and guiding you through
+          every step of the lending process. From pre-approval to closing, my goal is to make the experience
+          smooth, efficient, and stress-free.
+          <br />
+          <br />
+          I look forward to helping you achieve your home financing goals and being a trusted resource along the
+          way.
         </p>
       </section>
 
