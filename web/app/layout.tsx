@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { LogoutButton } from "./components/LogoutButton";
 
 export const metadata: Metadata = {
   title: "Kari Pastrana — Loan Officer Dashboard",
@@ -25,19 +24,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             padding: "1rem 1.5rem",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "flex-start",
             gap: "1rem",
           }}
         >
           <a href="/" style={{ textDecoration: "none", color: "var(--text)", fontWeight: 600 }}>
             Kari Pastrana
           </a>
-          <nav style={{ display: "flex", gap: "1rem", fontSize: "0.9rem" }}>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/dashboard/csv">CSV Export</a>
-            <a href="/login">Login</a>
-            <LogoutButton />
-          </nav>
         </header>
         {children}
       </body>

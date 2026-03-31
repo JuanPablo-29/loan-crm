@@ -1,4 +1,6 @@
 export default function Home() {
+  const applicationUrl = process.env.NEXT_PUBLIC_EXTERNAL_APPLICATION_URL ?? "#";
+
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "2.5rem 1.25rem 3rem" }}>
       <section
@@ -21,10 +23,14 @@ export default function Home() {
             and responsive support.
           </p>
           <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap", marginTop: "1rem" }}>
-            <a href="/login" className="btn btn-primary" style={{ textDecoration: "none" }}>
-              Loan Officer Login
+            <a href={applicationUrl} className="btn btn-primary" style={{ textDecoration: "none" }}>
+              Apply
             </a>
-            <a href="mailto:kari@novushomemortgage.com" className="btn" style={{ textDecoration: "none" }}>
+            <a
+              href="mailto:kari.pastrana@novushomemortgage.com"
+              className="btn"
+              style={{ textDecoration: "none" }}
+            >
               Contact Kari
             </a>
           </div>
