@@ -53,6 +53,7 @@ leadsRouter.get("/export/csv", async (_req, res, next) => {
         ].join(",")
       ),
     ];
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", 'attachment; filename="leads.csv"');
     return res.status(200).send(lines.join("\n"));
@@ -73,7 +74,7 @@ leadsRouter.get("/", async (req, res, next) => {
           ? "created"
           : sortParam === "activity"
             ? "activity"
-            : "updated";
+            : "created";
     const leads = await listLeadsWithSummary({ status, sort, includeArchived });
     const { rows: stuckIds } = await pool.query<{ id: string }>(
       `SELECT id FROM leads
@@ -95,6 +96,7 @@ leadsRouter.get("/", async (req, res, next) => {
         stale_no_reply,
       };
     });
+    res.setHeader("Cache-Control", "no-store");
     res.json({ leads: enriched });
   } catch (e) {
     next(e);

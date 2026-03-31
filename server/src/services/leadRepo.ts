@@ -33,7 +33,7 @@ export type LeadListItem = LeadRow & {
 };
 
 const LIST_ORDER: Record<"updated" | "score" | "created" | "activity", string> = {
-  updated: "l.updated_at DESC",
+  updated: "l.updated_at DESC, l.created_at DESC",
   score: "l.lead_score DESC, l.updated_at DESC",
   created: "l.created_at DESC",
   activity: "COALESCE(ob.last_out, l.updated_at, l.created_at) DESC",
@@ -47,7 +47,7 @@ export async function listLeadsWithSummary(filters: {
   const order = LIST_ORDER[filters.sort ?? "updated"];
   const where: string[] = [];
   const params: unknown[] = [];
-  if (!filters.includeArchived) where.push("l.archived = false");
+  if (!filters.includeArchived) where.push("(l.archived = false OR l.archived IS NULL)");
   if (filters.status) {
     params.push(filters.status);
     where.push(`l.status = $${params.length}`);

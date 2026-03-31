@@ -63,13 +63,15 @@ export default function CsvPage() {
     setLoading(true);
     setErr(null);
     try {
-      const res = await fetch("/api/leads/export/csv", { credentials: "include" });
+      const res = await fetch("/api/leads/export/csv", { credentials: "include", cache: "no-store" });
       if (!res.ok) {
         if (res.status === 401) throw new Error("unauthorized");
         throw new Error("load_failed");
       }
       const text = await res.text();
-      setRows(parseCsv(text));
+      const parsed = parseCsv(text);
+      console.log("[csv] rows received:", parsed.length);
+      setRows(parsed);
     } catch (e) {
       setErr(e instanceof Error && e.message === "unauthorized" ? "Sign in at /login to export." : "Failed to load CSV preview");
     } finally {

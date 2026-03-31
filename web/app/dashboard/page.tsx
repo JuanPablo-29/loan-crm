@@ -72,7 +72,7 @@ export default function DashboardPage() {
       const q = new URLSearchParams();
       if (status) q.set("status", status);
       if (sort) q.set("sort", sort);
-      const res = await fetch(`/api/leads?${q}`, { credentials: "include" });
+      const res = await fetch(`/api/leads?${q}`, { credentials: "include", cache: "no-store" });
       const lr = (await res.json()) as { leads?: Lead[]; error?: string };
       if (!res.ok) {
         setLeads([]);
@@ -83,6 +83,7 @@ export default function DashboardPage() {
         );
         return;
       }
+      console.log("[dashboard] leads received:", lr.leads?.length ?? 0);
       setLeads(lr.leads ?? []);
     } catch {
       setErr("Failed to load dashboard");
@@ -94,6 +95,10 @@ export default function DashboardPage() {
   useEffect(() => {
     void load();
   }, [status, sort]);
+
+  useEffect(() => {
+    console.log("[dashboard] leads rendered:", leads.length);
+  }, [leads]);
 
   async function onArchive(id: string) {
     setArchivingId(id);
