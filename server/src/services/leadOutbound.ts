@@ -9,6 +9,47 @@ function unsubscribeFooter(lead: LeadRow): string {
   return `\n\n—\nPrefer not to receive these messages? Reply STOP to opt out.`;
 }
 
+function firstNameFromLead(lead: LeadRow): string {
+  const raw = (lead.name ?? "").trim();
+  if (!raw) return "there";
+  const token = raw.split(/\s+/)[0] ?? "";
+  return token.replace(/[^a-zA-Z'-]/g, "") || "there";
+}
+
+function locationFromPropertyAddress(lead: LeadRow): string | null {
+  const raw = (lead.property_address ?? "").trim();
+  if (!raw) return null;
+  const parts = raw
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
+  }
+  return parts[0] ?? null;
+}
+
+function buildKariBrandedBody(lead: LeadRow): string {
+  const firstName = firstNameFromLead(lead);
+  const location = locationFromPropertyAddress(lead);
+  if (location) {
+    return `Hello ${firstName},
+
+I am a preferred lender with Realtor.com. My name is Kari and I see you are looking at properties in ${location}. Kindly please call me to discuss how Novus Home Mortgage may assist you with your pre-approval.
+
+Warm regards,
+
+Kari Pastrana`;
+  }
+  return `Hello ${firstName},
+
+I am a preferred lender with Realtor.com. My name is Kari and I'd love to connect with you to discuss how Novus Home Mortgage may assist you with your pre-approval.
+
+Warm regards,
+
+Kari Pastrana`;
+}
+
 /** Use API_PUBLIC_URL: `GET /r/:token` is served by Express, not Next.js on APP_BASE_URL. */
 function trackedApplicationLink(lead: LeadRow): string {
   const base = config.apiPublicUrl.replace(/\/$/, "");
@@ -48,9 +89,13 @@ export async function sendToLead(input: SendToLeadInput): Promise<{ ok: boolean;
 
   const trackedLink = trackedApplicationLink(input.lead);
   const cta = input.includeTrackedLink === false ? "" : `\n\nApplication link: ${trackedLink}`;
+  const brandedBody =
+    input.templateKey === "ai_reply" || input.templateKey.startsWith("followup_")
+      ? buildKariBrandedBody(input.lead)
+      : input.body;
   const text = input.skipFooter
-    ? `${input.body}${cta}`
-    : `${input.body}${cta}${unsubscribeFooter(input.lead)}`;
+    ? `${brandedBody}${cta}`
+    : `${brandedBody}${cta}${unsubscribeFooter(input.lead)}`;
 
   const mail = await sendMail({
     to: input.lead.email,

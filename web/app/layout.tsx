@@ -3,8 +3,8 @@ import "./globals.css";
 import { LogoutButton } from "./components/LogoutButton";
 
 export const metadata: Metadata = {
-  title: "Loan CRM — Officer Dashboard",
-  description: "AI-powered loan lead engagement",
+  title: "Kari Pastrana — Loan Officer Dashboard",
+  description: "Loan lead engagement for Kari Pastrana",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,8 +29,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             gap: "1rem",
           }}
         >
-          <a href="/dashboard" style={{ textDecoration: "none", color: "var(--text)", fontWeight: 600 }}>
-            Loan CRM
+          <a href="/" style={{ textDecoration: "none", color: "var(--text)", fontWeight: 600 }}>
+            Kari Pastrana
           </a>
           <nav style={{ display: "flex", gap: "1rem", fontSize: "0.9rem" }}>
             <a href="/dashboard">Dashboard</a>
