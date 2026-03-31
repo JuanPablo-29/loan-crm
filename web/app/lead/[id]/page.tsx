@@ -66,8 +66,16 @@ export default function LeadDetailPage() {
   useEffect(() => {
     async function run() {
       try {
-        const res = await fetch(`/api/leads/${id}`);
+        const res = await fetch(`/api/leads/${id}`, { credentials: "include" });
         const data = await res.json();
+        if (!res.ok) {
+          setErr(
+            res.status === 401
+              ? "Session expired. Sign in again at /login."
+              : data?.error ?? `Failed to load (${res.status})`
+          );
+          return;
+        }
         if (!data.lead) {
           setErr("Lead not found");
           return;

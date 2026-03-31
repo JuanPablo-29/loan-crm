@@ -72,7 +72,17 @@ export default function DashboardPage() {
       const q = new URLSearchParams();
       if (status) q.set("status", status);
       if (sort) q.set("sort", sort);
-      const lr = await fetch(`/api/leads?${q}`).then((r) => r.json());
+      const res = await fetch(`/api/leads?${q}`, { credentials: "include" });
+      const lr = (await res.json()) as { leads?: Lead[]; error?: string };
+      if (!res.ok) {
+        setLeads([]);
+        setErr(
+          res.status === 401
+            ? "Session expired or not signed in. Open /login and sign in again."
+            : lr.error ?? `Failed to load leads (${res.status})`
+        );
+        return;
+      }
       setLeads(lr.leads ?? []);
     } catch {
       setErr("Failed to load dashboard");
@@ -91,7 +101,7 @@ export default function DashboardPage() {
     const prev = leads;
     setLeads((curr) => curr.filter((l) => l.id !== id));
     try {
-      const res = await fetch(`/api/leads/${id}/archive`, { method: "PATCH" });
+      const res = await fetch(`/api/leads/${id}/archive`, { method: "PATCH", credentials: "include" });
       if (!res.ok) throw new Error("archive_failed");
     } catch {
       setLeads(prev);
