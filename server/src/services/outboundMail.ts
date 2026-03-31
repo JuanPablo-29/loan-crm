@@ -13,6 +13,7 @@ function getTransporter(): nodemailer.Transporter | null {
       port: config.smtp.port,
       secure,
       requireTLS: config.smtp.requireTls,
+      ...(config.smtp.forceIpv4 ? { family: 4 as const } : {}),
       connectionTimeout: config.smtp.connectionTimeoutMs,
       greetingTimeout: config.smtp.greetingTimeoutMs,
       socketTimeout: config.smtp.socketTimeoutMs,

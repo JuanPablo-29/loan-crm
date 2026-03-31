@@ -114,6 +114,7 @@ flowchart LR
 - Match TLS mode to provider:
   - `587`: `SMTP_SECURE=false`, `SMTP_REQUIRE_TLS=true`
   - `465`: `SMTP_SECURE=true`
+- For **Gmail** on some cloud hosts, DNS may prefer IPv6 (`AAAA`) while outbound IPv6 is broken, causing connect timeouts. Set `SMTP_FORCE_IPV4=true` on the API service and redeploy.
 - Confirm sender/domain verification and provider-specific SMTP/app password requirements are complete.
 - If timeouts persist, test with a known-good SMTP relay endpoint (SendGrid/Mailgun/Resend SMTP) to isolate provider restrictions.
 - Keep ingestion/scheduler healthy while debugging by setting `SMTP_DISABLED=true` (emails are logged, not sent).

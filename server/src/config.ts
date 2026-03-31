@@ -29,6 +29,8 @@ export const config = {
     connectionTimeoutMs: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS ?? 15000),
     greetingTimeoutMs: Number(process.env.SMTP_GREETING_TIMEOUT_MS ?? 10000),
     socketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS ?? 20000),
+    /** Prefer IPv4 when cloud DNS returns AAAA first but IPv6 egress is broken (common ETIMEDOUT on CONN). */
+    forceIpv4: String(process.env.SMTP_FORCE_IPV4 ?? "").toLowerCase() === "true",
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM ?? "Loan Team <noreply@example.com>",
