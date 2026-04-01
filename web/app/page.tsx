@@ -79,8 +79,38 @@ export default function Home() {
         </ul>
       </section>
 
-      <footer style={{ marginTop: "1.2rem", color: "var(--muted)", fontSize: "0.9rem", textAlign: "center" }}>
-        Kari Pastrana • Preferred Lender • Novus Home Mortgage
+      <footer
+        role="contentinfo"
+        style={{
+          marginTop: "2rem",
+          paddingTop: "1.5rem",
+          borderTop: "1px solid var(--border)",
+          color: "var(--muted)",
+          fontSize: "0.875rem",
+          lineHeight: 1.65,
+          textAlign: "center",
+        }}
+      >
+        <div style={{ maxWidth: 520, margin: "0 auto" }}>
+          <p style={{ margin: "0 0 0.75rem", color: "var(--text)", fontWeight: 600 }}>Novus Home Mortgage</p>
+          <p style={{ margin: "0 0 0.5rem" }}>NMLS# 423065</p>
+          <p style={{ margin: "0 0 1rem" }}>
+            Kari Pastrana, Preferred Lender
+            <br />
+            NMLS# 2745146
+          </p>
+          <address
+            style={{
+              margin: 0,
+              fontStyle: "normal",
+              color: "var(--muted)",
+            }}
+          >
+            20225 Water Tower Blvd, Suite 400
+            <br />
+            Brookfield, WI 53045
+          </address>
+        </div>
       </footer>
     </main>
   );
