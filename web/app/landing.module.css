@@ -1,0 +1,287 @@
+/* Public landing (karipastrana.com) — white + pastel green accent */
+
+.fullBleed {
+  background: #ffffff;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  width: 100vw;
+  min-height: calc(100vh - 57px);
+}
+
+.page {
+  --landing-accent: #a8d5ba;
+  --landing-accent-dark: #7eb89a;
+  --landing-accent-soft: #e8f4ed;
+  --landing-text: #1a1f1c;
+  --landing-muted: #5c6560;
+  --landing-border: #e2ebe5;
+
+  background: #ffffff;
+  color: var(--landing-text);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  min-height: calc(100vh - 57px);
+  margin: 0 auto;
+  max-width: 1080px;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1.25rem, 4vw, 2.5rem) clamp(2.5rem, 5vw, 4rem);
+}
+
+.hero {
+  position: relative;
+  border-radius: 20px;
+  padding: clamp(1.75rem, 4vw, 2.75rem);
+  margin-bottom: clamp(2rem, 5vw, 3rem);
+  background: linear-gradient(135deg, #ffffff 0%, var(--landing-accent-soft) 55%, #f7faf8 100%);
+  border: 1px solid var(--landing-border);
+  box-shadow: 0 4px 24px rgba(45, 106, 79, 0.06);
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 100% 0%, rgba(168, 213, 186, 0.35), transparent 55%);
+  pointer-events: none;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .heroInner {
+    grid-template-columns: minmax(0, 1.45fr) minmax(220px, 1fr);
+  }
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--landing-accent-dark);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0 0 0.35rem;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--landing-text);
+}
+
+.subtitle {
+  margin: 0 0 1rem;
+  color: var(--landing-muted);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.tagline {
+  margin: 0 0 1.35rem;
+  line-height: 1.65;
+  color: var(--landing-muted);
+  font-size: 0.98rem;
+  max-width: 36rem;
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.5rem;
+  border-radius: 9999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #ffffff !important;
+  background: var(--landing-accent-dark);
+  border: 2px solid var(--landing-accent-dark);
+  box-shadow: 0 2px 12px rgba(126, 184, 154, 0.35);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btnPrimary:hover {
+  background: #6aa888;
+  border-color: #6aa888;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(126, 184, 154, 0.45);
+}
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.5rem;
+  border-radius: 9999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--landing-accent-dark) !important;
+  background: transparent;
+  border: 2px solid var(--landing-accent);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.btnSecondary:hover {
+  background: var(--landing-accent-soft);
+  border-color: var(--landing-accent-dark);
+  color: #2d5c47 !important;
+}
+
+@media (max-width: 480px) {
+  .ctaRow {
+    flex-direction: column;
+  }
+
+  .btnPrimary,
+  .btnSecondary {
+    width: 100%;
+  }
+}
+
+.photoCol {
+  text-align: center;
+  justify-self: center;
+  align-self: center;
+  width: 100%;
+  max-width: 280px;
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center top;
+  border-radius: 16px;
+  border: 2px solid var(--landing-border);
+  box-shadow: 0 8px 28px rgba(45, 106, 79, 0.08);
+}
+
+.nmlsPhoto {
+  margin: 0.7rem 0 0;
+  color: var(--landing-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.section {
+  border-radius: 16px;
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  margin-bottom: clamp(1.25rem, 3vw, 1.75rem);
+  background: #ffffff;
+  border: 1px solid var(--landing-border);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+}
+
+.sectionTitle {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--landing-text);
+  padding-bottom: 0.65rem;
+  border-bottom: 2px solid var(--landing-accent);
+  display: inline-block;
+  width: 100%;
+}
+
+.bodyText {
+  margin: 0;
+  line-height: 1.7;
+  color: var(--landing-muted);
+  font-size: 1rem;
+}
+
+.list {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.85;
+  color: var(--landing-muted);
+}
+
+.list li {
+  margin-bottom: 0.35rem;
+}
+
+.list li::marker {
+  color: var(--landing-accent-dark);
+}
+
+.contactSection {
+  border-radius: 16px;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  margin-bottom: clamp(1.5rem, 3vw, 2rem);
+  background: var(--landing-accent-soft);
+  border: 1px solid var(--landing-border);
+  text-align: center;
+}
+
+.contactTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--landing-text);
+}
+
+.contactLink {
+  color: var(--landing-accent-dark) !important;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.contactLink:hover {
+  border-bottom-color: var(--landing-accent-dark);
+  color: #2d5c47 !important;
+}
+
+.footer {
+  margin-top: clamp(2rem, 4vw, 2.75rem);
+  padding: clamp(1.5rem, 3vw, 2rem) clamp(1rem, 2vw, 1.5rem);
+  border-top: 2px solid var(--landing-accent);
+  background: #f9fbf9;
+  border-radius: 0 0 12px 12px;
+  color: var(--landing-muted);
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  text-align: center;
+}
+
+.footerInner {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.footerCompany {
+  margin: 0 0 0.5rem;
+  color: var(--landing-text);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.footerNmls {
+  margin: 0 0 1rem;
+}
+
+.footerAddress {
+  margin: 0;
+  font-style: normal;
+  color: var(--landing-muted);
+}

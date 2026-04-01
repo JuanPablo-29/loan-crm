@@ -1,53 +1,43 @@
+import styles from "./landing.module.css";
+
 export default function Home() {
   const applicationUrl = process.env.NEXT_PUBLIC_EXTERNAL_APPLICATION_URL ?? "#";
 
   return (
-    <main style={{ maxWidth: 980, margin: "0 auto", padding: "2.5rem 1.25rem 3rem" }}>
-      <section
-        className="card"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1.5fr) minmax(240px, 1fr)",
-          gap: "1.5rem",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <p style={{ marginTop: 0, color: "var(--muted)", fontWeight: 600, letterSpacing: "0.04em" }}>
-            KARIPASTRANA.COM
-          </p>
-          <h1 style={{ marginTop: 0, marginBottom: "0.4rem" }}>Kari Pastrana</h1>
-          <p style={{ marginTop: 0, color: "var(--muted)", fontSize: "1.05rem" }}>Preferred Lender</p>
-          <p style={{ lineHeight: 1.6 }}>
-            Helping homebuyers move confidently from search to pre-approval with personalized lending guidance
-            and responsive support.
-          </p>
-          <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap", marginTop: "1rem" }}>
-            <a href={applicationUrl} className="btn btn-primary" style={{ textDecoration: "none" }}>
-              Apply
-            </a>
-            <a
-              href="mailto:kari.pastrana@novushomemortgage.com"
-              className="btn"
-              style={{ textDecoration: "none" }}
-            >
-              Contact Kari
-            </a>
+    <div className={styles.fullBleed}>
+    <main className={styles.page}>
+      <section className={styles.hero} aria-label="Introduction">
+        <div className={styles.heroInner}>
+          <div>
+            <p className={styles.eyebrow}>KARIPASTRANA.COM</p>
+            <h1 className={styles.title}>Kari Pastrana</h1>
+            <p className={styles.subtitle}>Preferred Lender · Mortgage professional</p>
+            <p className={styles.tagline}>
+              Helping you move from browsing homes to a confident pre-approval—with clear guidance, responsive
+              communication, and lending options tailored to your situation.
+            </p>
+            <div className={styles.ctaRow}>
+              <a href={applicationUrl} className={styles.btnPrimary}>
+                Apply
+              </a>
+              <a href="mailto:kari.pastrana@novushomemortgage.com" className={styles.btnSecondary}>
+                Contact Kari
+              </a>
+            </div>
           </div>
-        </div>
-        <div style={{ justifySelf: "center", width: "100%", maxWidth: 280 }}>
-          <img
-            src="/kari.jpg"
-            alt="Kari Pastrana profile placeholder"
-            style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)", display: "block" }}
-          />
+          <div className={styles.photoCol}>
+            <img src="/kari.jpg" alt="Kari Pastrana" className={styles.photo} />
+            <p className={styles.nmlsPhoto}>NMLS# 2745146</p>
+          </div>
         </div>
       </section>
 
-      <section className="card" style={{ marginTop: "1rem" }}>
-        <h2 style={{ marginTop: 0 }}>About</h2>
-        <p style={{ marginBottom: 0, lineHeight: 1.65 }}>
-          Greetings - it's a pleasure to meet you! My name is Kari Pastrana, but please call me Kari. I am a
+      <section className={styles.section} aria-labelledby="about-heading">
+        <h2 id="about-heading" className={styles.sectionTitle}>
+          About Kari
+        </h2>
+        <p className={styles.bodyText}>
+          Greetings - it&apos;s a pleasure to meet you! My name is Kari Pastrana, but please call me Kari. I am a
           dedicated mortgage professional committed to helping clients navigate financing with confidence and
           clarity.
           <br />
@@ -69,9 +59,11 @@ export default function Home() {
         </p>
       </section>
 
-      <section className="card" style={{ marginTop: "1rem" }}>
-        <h2 style={{ marginTop: 0 }}>Services</h2>
-        <ul style={{ margin: 0, paddingLeft: "1.2rem", lineHeight: 1.7 }}>
+      <section className={styles.section} aria-labelledby="services-heading">
+        <h2 id="services-heading" className={styles.sectionTitle}>
+          Services &amp; lending support
+        </h2>
+        <ul className={styles.list}>
           <li>Pre-approval consultations</li>
           <li>Purchase loan guidance</li>
           <li>Rate and payment scenario planning</li>
@@ -79,33 +71,23 @@ export default function Home() {
         </ul>
       </section>
 
-      <footer
-        role="contentinfo"
-        style={{
-          marginTop: "2rem",
-          paddingTop: "1.5rem",
-          borderTop: "1px solid var(--border)",
-          color: "var(--muted)",
-          fontSize: "0.875rem",
-          lineHeight: 1.65,
-          textAlign: "center",
-        }}
-      >
-        <div style={{ maxWidth: 520, margin: "0 auto" }}>
-          <p style={{ margin: "0 0 0.75rem", color: "var(--text)", fontWeight: 600 }}>Novus Home Mortgage</p>
-          <p style={{ margin: "0 0 0.5rem" }}>NMLS# 423065</p>
-          <p style={{ margin: "0 0 1rem" }}>
-            Kari Pastrana, Preferred Lender
-            <br />
-            NMLS# 2745146
-          </p>
-          <address
-            style={{
-              margin: 0,
-              fontStyle: "normal",
-              color: "var(--muted)",
-            }}
-          >
+      <section className={styles.contactSection} aria-labelledby="contact-heading">
+        <h2 id="contact-heading" className={styles.contactTitle}>
+          Contact
+        </h2>
+        <p className={styles.bodyText} style={{ marginBottom: "0.5rem" }}>
+          Reach out by email to get started or ask a question.
+        </p>
+        <a href="mailto:kari.pastrana@novushomemortgage.com" className={styles.contactLink}>
+          kari.pastrana@novushomemortgage.com
+        </a>
+      </section>
+
+      <footer role="contentinfo" className={styles.footer}>
+        <div className={styles.footerInner}>
+          <p className={styles.footerCompany}>Novus Home Mortgage</p>
+          <p className={styles.footerNmls}>NMLS# 423065</p>
+          <address className={styles.footerAddress}>
             20225 Water Tower Blvd, Suite 400
             <br />
             Brookfield, WI 53045
@@ -113,5 +95,6 @@ export default function Home() {
         </div>
       </footer>
     </main>
+    </div>
   );
 }
