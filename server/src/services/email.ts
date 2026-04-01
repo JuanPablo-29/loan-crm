@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { config } from "../config.js";
+import { buildEmailSignatureHtml } from "../utils/emailSignature.js";
 
 export type SendEmailInput = {
   to: string;
@@ -23,11 +24,12 @@ function getResendClient(): Resend {
 export async function sendEmail(input: SendEmailInput): Promise<void> {
   try {
     const resend = getResendClient();
+    const htmlWithSignature = `${input.html}${buildEmailSignatureHtml()}`;
     const result = await resend.emails.send({
       from: config.emailFrom,
       to: input.to,
       subject: input.subject,
-      html: input.html,
+      html: htmlWithSignature,
     });
     if (result.error) {
       throw new Error(`Resend API error: ${result.error.message}`);
