@@ -37,12 +37,11 @@ export default function Home() {
           About Kari
         </h2>
         <p className={styles.bodyText}>
-          Greetings - it&apos;s a pleasure to meet you! My name is Kari Pastrana, but please call me Kari. I am a
-          dedicated mortgage professional committed to helping clients navigate financing with confidence and
-          clarity.
+          My name is Karithlyn Pastrana, but you can call me Kari. I am a dedicated mortgage professional committed
+          to helping clients navigate financing with confidence and clarity.
           <br />
           <br />
-          I specialize in a wide range of loan programs, including traditional loans, Non-QM options, and DSR
+          I specialize in a wide range of loan programs, including traditional loans, Non-QM options, and DSCR
           loans, allowing me to serve clients with diverse financial situations. Whether you are a first-time
           buyer, investor, or self-employed borrower, I work to find tailored solutions that fit your needs. I
           am also licensed to assist clients in all 50 states, providing flexibility no matter where you are
