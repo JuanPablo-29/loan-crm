@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ConditionalHeader } from "./components/ConditionalHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,30 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <header
-          style={{
-            borderBottom: "1px solid #e2ebe5",
-            background: "#ffffff",
-            padding: "1rem 1.5rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            gap: "1rem",
-          }}
-        >
-          <a
-            href="/"
-            style={{
-              textDecoration: "none",
-              color: "#2d5c47",
-              fontWeight: 700,
-              fontFamily: '"Inter", system-ui, sans-serif',
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Kari Pastrana
-          </a>
-        </header>
+        <ConditionalHeader />
         {children}
       </body>
     </html>
