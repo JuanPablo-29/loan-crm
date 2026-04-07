@@ -1,15 +1,22 @@
 import { google } from "googleapis";
 import { config } from "../config.js";
+import { createGmailOAuth2Client, getGmailRefreshToken } from "./gmailCredentials.js";
 import { ingestRawEmail } from "./ingestion.js";
 
 export async function pollGmailOnce(max = 10): Promise<{ processed: number }> {
-  const { clientId, clientSecret, refreshToken } = config.gmail;
-  if (!clientId || !clientSecret || !refreshToken) {
-    console.warn("[gmail] OAuth not configured — skip poll");
+  const { clientId, clientSecret } = config.gmail;
+  if (!clientId || !clientSecret) {
+    console.warn("[gmail] GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET missing — skip poll");
     return { processed: 0 };
   }
 
-  const oauth2 = new google.auth.OAuth2(clientId, clientSecret);
+  const refreshToken = await getGmailRefreshToken();
+  if (!refreshToken) {
+    console.warn("[gmail] No refresh token (set GMAIL_REFRESH_TOKEN or complete OAuth at GET /api/auth/google) — skip poll");
+    return { processed: 0 };
+  }
+
+  const oauth2 = createGmailOAuth2Client();
   oauth2.setCredentials({ refresh_token: refreshToken });
   const gmail = google.gmail({ version: "v1", auth: oauth2 });
 

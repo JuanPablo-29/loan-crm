@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { config } from "../config.js";
+import { requireAuth } from "../middleware/auth.js";
 import { createSessionToken, findUserByEmail, readSessionToken, verifyPassword } from "../services/auth.js";
+import { createGmailOAuth2Client, GMAIL_OAUTH_SCOPES } from "../services/gmailCredentials.js";
 
 export const authRouter = Router();
 
@@ -48,4 +50,23 @@ authRouter.get("/me", (req, res) => {
   const session = readSessionToken(token);
   if (!session) return res.status(401).json({ authenticated: false });
   return res.json({ authenticated: true, user: { id: session.sub, email: session.email } });
+});
+
+/**
+ * Start Gmail OAuth (Web client). Requires dashboard session.
+ * Step 1: Redirect browser to Google consent screen.
+ * Step 2: User returns to GET /api/google/callback with ?code=...
+ */
+authRouter.get("/google", requireAuth, (_req, res, next) => {
+  try {
+    const oauth2Client = createGmailOAuth2Client();
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent",
+      scope: [...GMAIL_OAUTH_SCOPES],
+    });
+    return res.redirect(302, authUrl);
+  } catch (e) {
+    next(e);
+  }
 });

@@ -8,6 +8,7 @@ import { ingestRouter } from "./routes/ingest.js";
 import { mailPollRouter } from "./routes/mailPoll.js";
 import { redirectRouter } from "./routes/redirect.js";
 import { authRouter } from "./routes/auth.js";
+import { googleOAuthRouter } from "./routes/googleOAuth.js";
 import { startFollowUpWorker } from "./services/followUpQueue.js";
 import { startGmailScheduler } from "./services/gmailScheduler.js";
 import { requireAuth } from "./middleware/auth.js";
@@ -42,6 +43,8 @@ app.get("/api/health", async (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+/** Gmail OAuth callback (public; Google redirects here). */
+app.use("/api/google", googleOAuthRouter);
 app.use("/api/ingest", requireAuth, ingestRouter);
 app.use("/api/mail", requireAuth, mailPollRouter);
 app.use("/api/leads", requireAuth, leadsRouter);

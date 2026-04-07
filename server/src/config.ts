@@ -24,6 +24,8 @@ export const config = {
   gmail: {
     clientId: process.env.GMAIL_CLIENT_ID,
     clientSecret: process.env.GMAIL_CLIENT_SECRET,
+    /** Must match an authorized redirect URI on the Google Cloud OAuth Web client (e.g. Next proxy or API origin). */
+    redirectUri: process.env.GMAIL_REDIRECT_URI ?? "",
     refreshToken: process.env.GMAIL_REFRESH_TOKEN,
   },
   autoPollMinutes: Number(process.env.AUTO_POLL_MINUTES ?? 3),

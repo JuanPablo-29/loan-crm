@@ -99,3 +99,10 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Single-row store for Gmail OAuth refresh token (Web client flow); env GMAIL_REFRESH_TOKEN remains fallback
+CREATE TABLE IF NOT EXISTS gmail_oauth_tokens (
+  singleton_id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (singleton_id = 1),
+  refresh_token TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
