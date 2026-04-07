@@ -108,18 +108,20 @@ export async function createLead(input: {
   email: string;
   phone?: string | null;
   property_address?: string | null;
+  notes?: string | null;
   intent?: string | null;
   lead_score?: number;
 }): Promise<LeadRow> {
   const score = input.lead_score ?? inferScoreFromIntent(input.intent);
   const redirectToken = generateRedirectToken();
   const { rows } = await pool.query<LeadRow>(
-    `INSERT INTO leads (name, email, phone, property_address, intent, lead_score, redirect_token)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO leads (name, email, phone, property_address, notes, intent, lead_score, redirect_token)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (email) DO UPDATE SET
        name = COALESCE(EXCLUDED.name, leads.name),
        phone = COALESCE(EXCLUDED.phone, leads.phone),
        property_address = COALESCE(leads.property_address, EXCLUDED.property_address),
+       notes = COALESCE(leads.notes, EXCLUDED.notes),
        intent = COALESCE(EXCLUDED.intent, leads.intent),
        lead_score = GREATEST(leads.lead_score, EXCLUDED.lead_score),
        redirect_token = COALESCE(leads.redirect_token, EXCLUDED.redirect_token),
@@ -130,6 +132,7 @@ export async function createLead(input: {
       input.email.trim().toLowerCase(),
       input.phone ?? null,
       input.property_address ?? null,
+      input.notes ?? null,
       input.intent ?? null,
       score,
       redirectToken,

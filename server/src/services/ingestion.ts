@@ -8,7 +8,7 @@ import {
   updateLeadStatus,
 } from "./leadRepo.js";
 import { insertEmail, listEmailsForLead } from "./emailRepo.js";
-import { extractLeadFieldsFromEmail, generateReply } from "./aiAgent.js";
+import { extractLeadFieldsFromEmail, generatePersonalizedOutboundEmail } from "./aiAgent.js";
 import { sendToLead } from "./leadOutbound.js";
 import { sendMail } from "./outboundMail.js";
 import { scheduleFollowUpsForLead, cancelScheduledFollowUps } from "./followUpQueue.js";
@@ -37,6 +37,7 @@ export async function ingestRawEmail(input: {
       email,
       phone: extracted.phone,
       property_address: extracted.property_address,
+      notes: extracted.notes,
       intent: extracted.intent,
       lead_score: extracted.lead_score_hint ?? undefined,
     });
@@ -79,18 +80,19 @@ export async function ingestRawEmail(input: {
   }
 
   const thread = await listEmailsForLead(current.id, 40);
-  const context = `Lead status: ${current.status}. Intent: ${current.intent ?? extracted.intent ?? "unknown"}.`;
-  const replyBody = await generateReply({
+  const aiDraft = await generatePersonalizedOutboundEmail({
+    lead: current,
     thread,
-    leadName: current.name,
-    context,
+    objective:
+      "Reply to the lead's latest message with tailored guidance and move them toward the next pre-approval step.",
+    subjectHint: input.subject ?? "Your loan inquiry",
   });
-
-  const subj = input.subject?.startsWith("Re:") ? input.subject : `Re: ${input.subject ?? "Your loan inquiry"}`;
+  const subjBase = aiDraft.subject || input.subject || "Your loan inquiry";
+  const subj = subjBase.startsWith("Re:") ? subjBase : `Re: ${subjBase}`;
   const send = await sendToLead({
     lead: current,
     subject: subj,
-    body: replyBody,
+    body: aiDraft.body,
     templateKey: "ai_reply",
     dedupKey: `ai_reply:${input.externalId ?? `${current.id}:${Date.now()}`}`,
   });

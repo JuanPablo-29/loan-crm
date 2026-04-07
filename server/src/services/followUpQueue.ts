@@ -5,6 +5,8 @@ import { pool } from "../db/pool.js";
 import { findLeadById } from "./leadRepo.js";
 import { sendToLead } from "./leadOutbound.js";
 import { hasLeadRepliedAfterLastOutbound } from "./emailRepo.js";
+import { generatePersonalizedOutboundEmail } from "./aiAgent.js";
+import { listEmailsForLead } from "./emailRepo.js";
 
 const connection = new Redis(config.redisUrl, { maxRetriesPerRequest: null });
 
@@ -62,18 +64,23 @@ async function processFollowUp(job: Job<FollowUpJob>): Promise<void> {
   if (lead.clicked_at || lead.engaged_at) return;
   if (await hasLeadRepliedAfterLastOutbound(leadId)) return;
 
-  const subjects: Record<number, string> = {
+  const subjectHints: Record<number, string> = {
     1: "Quick reminder from your loan officer",
     3: "Following up on your loan inquiry",
     7: "Final follow-up — happy to help",
   };
-  const subject = subjects[sequenceDay] ?? "Loan follow-up";
-  const body = `Hi${lead.name ? ` ${lead.name}` : ""},\n\nJust checking in on your loan inquiry. If you're still interested, reply with your timeline and any questions, and we'll help you with next steps.\n\nReply STOP to opt out.`;
+  const thread = await listEmailsForLead(lead.id, 40);
+  const aiDraft = await generatePersonalizedOutboundEmail({
+    lead,
+    thread,
+    objective: `Send day-${sequenceDay} follow-up tailored to this lead. Encourage a brief reply with their timeline and goals.`,
+    subjectHint: subjectHints[sequenceDay] ?? "Loan follow-up",
+  });
 
   const result = await sendToLead({
     lead,
-    subject,
-    body,
+    subject: aiDraft.subject,
+    body: aiDraft.body,
     templateKey: `followup_d${sequenceDay}`,
     dedupKey: `followup:${leadId}:${sequenceDay}:${job.id}`,
   });
