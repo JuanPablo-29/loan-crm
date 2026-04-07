@@ -11,6 +11,7 @@ export type LeadRow = {
   email: string;
   phone: string | null;
   property_address: string | null;
+  notes: string | null;
   intent: string | null;
   status: LeadStatus;
   redirect_token: string;

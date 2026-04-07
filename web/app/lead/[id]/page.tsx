@@ -26,6 +26,7 @@ type Lead = {
   email: string;
   phone: string | null;
   property_address: string | null;
+  notes: string | null;
   status: string;
   intent: string | null;
   lead_score: number;
@@ -62,6 +63,8 @@ export default function LeadDetailPage() {
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [trackedUrl, setTrackedUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {
     async function run() {
@@ -81,6 +84,7 @@ export default function LeadDetailPage() {
           return;
         }
         setLead(data.lead);
+        setNotes(data.lead.notes ?? "");
         setEmails(data.emails ?? []);
         setFollowUps(data.follow_ups ?? []);
         setTrackedUrl(data.tracked_redirect_url ?? null);
@@ -90,6 +94,35 @@ export default function LeadDetailPage() {
     }
     void run();
   }, [id]);
+
+  useEffect(() => {
+    if (!lead) return;
+    if (notes === (lead.notes ?? "")) return;
+    const timer = setTimeout(async () => {
+      try {
+        setSaveState("saving");
+        const res = await fetch(`/api/leads/${lead.id}/notes`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setSaveState("error");
+          console.error("[lead-notes] save failed", res.status, data);
+          return;
+        }
+        if (data?.lead) setLead(data.lead);
+        setSaveState("saved");
+        setTimeout(() => setSaveState("idle"), 1200);
+      } catch (e) {
+        setSaveState("error");
+        console.error("[lead-notes] save error", e);
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [notes, lead]);
 
   const timeline = useMemo(() => {
     if (!lead) return [];
@@ -172,6 +205,23 @@ export default function LeadDetailPage() {
         <p style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
           Created {new Date(lead.created_at).toLocaleString()} · Updated {new Date(lead.updated_at).toLocaleString()}
         </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: "1.5rem" }}>
+        <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Lead notes</h2>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value.slice(0, 5000))}
+          placeholder="Add notes about this lead..."
+          rows={7}
+          style={{ resize: "vertical", marginBottom: 8 }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: "0.8rem" }}>
+          <span style={{ color: "var(--muted)" }}>{notes.length}/5000</span>
+          {saveState === "saving" && <span style={{ color: "var(--muted)" }}>Saving…</span>}
+          {saveState === "saved" && <span style={{ color: "var(--ok)" }}>Saved</span>}
+          {saveState === "error" && <span style={{ color: "var(--danger)" }}>Failed to save</span>}
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: "1.5rem" }}>

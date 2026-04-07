@@ -8,6 +8,7 @@ type Lead = {
   email: string;
   phone: string | null;
   property_address: string | null;
+  notes: string | null;
   status: string;
   intent: string | null;
   lead_score: number;
@@ -218,6 +219,14 @@ export default function DashboardPage() {
                       <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{l.email}</div>
                       {l.intent && (
                         <div style={{ color: "var(--muted)", fontSize: "0.75rem", marginTop: 4 }}>{l.intent}</div>
+                      )}
+                      {l.notes && (
+                        <div
+                          style={{ color: "var(--muted)", fontSize: "0.75rem", marginTop: 4 }}
+                          title={l.notes}
+                        >
+                          Notes: {l.notes.length > 80 ? `${l.notes.slice(0, 79)}…` : l.notes}
+                        </div>
                       )}
                       {(l.stale_no_reply || l.stuck_suggestion) && (
                         <div className="tag warn" style={{ marginTop: 6 }}>

@@ -209,6 +209,16 @@ export async function archiveLead(id: string): Promise<void> {
   );
 }
 
+export async function updateLeadNotes(id: string, notes: string): Promise<void> {
+  await pool.query(
+    `UPDATE leads
+     SET notes = $2,
+         updated_at = now()
+     WHERE id = $1`,
+    [id, notes]
+  );
+}
+
 export async function markLeadClicked(id: string): Promise<void> {
   await pool.query(
     `UPDATE leads

@@ -6,6 +6,7 @@ import {
   listLeadsForCsvExport,
   listLeadsWithSummary,
   setStuck,
+  updateLeadNotes,
   updateLeadStatus,
 } from "../services/leadRepo.js";
 import { listEmailsForLead } from "../services/emailRepo.js";
@@ -143,6 +144,10 @@ const patchSchema = z.object({
   is_stuck: z.boolean().optional(),
 });
 
+const notesPatchSchema = z.object({
+  notes: z.string().max(5000),
+});
+
 leadsRouter.patch("/:id", async (req, res, next) => {
   try {
     const parsed = patchSchema.safeParse(req.body);
@@ -155,6 +160,22 @@ leadsRouter.patch("/:id", async (req, res, next) => {
     res.json({ lead: nextLead });
   } catch (e) {
     next(e);
+  }
+});
+
+leadsRouter.patch("/:id/notes", async (req, res, _next) => {
+  try {
+    const parsed = notesPatchSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+    const lead = await findLeadById(req.params.id);
+    if (!lead) return res.status(404).json({ error: "Not found" });
+    const normalized = parsed.data.notes.trim();
+    await updateLeadNotes(lead.id, normalized);
+    const nextLead = await findLeadById(lead.id);
+    return res.json({ lead: nextLead });
+  } catch (e) {
+    console.error("[leads] notes update failed", e);
+    return res.status(500).json({ error: "Failed to update notes" });
   }
 });
 
