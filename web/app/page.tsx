@@ -172,41 +172,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Reviews */}
-        <section className={styles.reviewsSection} aria-labelledby="reviews-heading">
-          <h2 id="reviews-heading" className={styles.reviewsTitle}>
-            What clients are saying
-          </h2>
-          <div className={styles.reviewsGrid}>
-            <blockquote className={styles.reviewCard}>
-              <p className={styles.reviewStars} aria-label="5 out of 5 stars">
-                ★★★★★
-              </p>
-              <p className={styles.reviewQuote}>
-                &ldquo;Kari made the entire process smooth and stress-free. Highly recommend!&rdquo;
-              </p>
-              <footer className={styles.reviewAuthor}>— Sarah M.</footer>
-            </blockquote>
-            <blockquote className={styles.reviewCard}>
-              <p className={styles.reviewStars} aria-label="5 out of 5 stars">
-                ★★★★★
-              </p>
-              <p className={styles.reviewQuote}>
-                &ldquo;Very knowledgeable and responsive. Helped me secure the right loan quickly.&rdquo;
-              </p>
-              <footer className={styles.reviewAuthor}>— James T.</footer>
-            </blockquote>
-            <blockquote className={styles.reviewCard}>
-              <p className={styles.reviewStars} aria-label="5 out of 5 stars">
-                ★★★★★
-              </p>
-              <p className={styles.reviewQuote}>
-                &ldquo;Excellent communication and guidance from start to finish.&rdquo;
-              </p>
-              <footer className={styles.reviewAuthor}>— Maria L.</footer>
-            </blockquote>
-          </div>
-        </section>
+        {/* Reviews section intentionally removed. Add real client testimonials here in the future. */}
 
         {/* G. Footer */}
         <footer role="contentinfo" className={styles.footer}>
