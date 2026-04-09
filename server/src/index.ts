@@ -7,6 +7,7 @@ import { leadsRouter } from "./routes/leads.js";
 import { ingestRouter } from "./routes/ingest.js";
 import { mailPollRouter } from "./routes/mailPoll.js";
 import { redirectRouter } from "./routes/redirect.js";
+import { unsubscribeRouter } from "./routes/unsubscribe.js";
 import { authRouter } from "./routes/auth.js";
 import { googleOAuthRouter } from "./routes/googleOAuth.js";
 import { startFollowUpWorker } from "./services/followUpQueue.js";
@@ -49,6 +50,7 @@ app.use("/api/ingest", requireAuth, ingestRouter);
 app.use("/api/mail", requireAuth, mailPollRouter);
 app.use("/api/leads", requireAuth, leadsRouter);
 app.use("/r", redirectRouter);
+app.use("/unsubscribe", unsubscribeRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

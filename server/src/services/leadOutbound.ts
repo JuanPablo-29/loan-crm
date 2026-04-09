@@ -5,8 +5,18 @@ import { setLastOutbound } from "./leadRepo.js";
 import { sendMail } from "./outboundMail.js";
 import { pool } from "../db/pool.js";
 
+/** Plain-text footer for compliance (one-click link + STOP). Exported for other outbound paths (e.g. opt-out ack). */
+export function emailComplianceFooter(lead: LeadRow): string {
+  const base = config.apiPublicUrl.replace(/\/$/, "");
+  const token = lead.unsubscribe_token?.trim();
+  if (!token) {
+    return `\n\n—\nIf you no longer wish to receive these emails, reply STOP to opt out.`;
+  }
+  return `\n\n—\nIf you no longer wish to receive these emails, click here to unsubscribe:\n${base}/unsubscribe/${token}\n\nYou can also reply STOP to opt out.`;
+}
+
 function unsubscribeFooter(lead: LeadRow): string {
-  return `\n\n—\nPrefer not to receive these messages? Reply STOP to opt out.`;
+  return emailComplianceFooter(lead);
 }
 
 /** Use API_PUBLIC_URL: `GET /r/:token` is served by Express, not Next.js on APP_BASE_URL. */

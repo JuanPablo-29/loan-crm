@@ -9,7 +9,7 @@ import {
 } from "./leadRepo.js";
 import { insertEmail, listEmailsForLead } from "./emailRepo.js";
 import { extractLeadFieldsFromEmail, generatePersonalizedOutboundEmail } from "./aiAgent.js";
-import { sendToLead } from "./leadOutbound.js";
+import { emailComplianceFooter, sendToLead } from "./leadOutbound.js";
 import { sendMail } from "./outboundMail.js";
 import { scheduleFollowUpsForLead, cancelScheduledFollowUps } from "./followUpQueue.js";
 
@@ -63,16 +63,17 @@ export async function ingestRawEmail(input: {
     await cancelScheduledFollowUps(current.id);
     const ack =
       "We've removed you from automated follow-ups. If you need help in the future, you can reach us anytime.";
+    const ackBody = `${ack}${emailComplianceFooter(current)}`;
     await sendMail({
       to: current.email,
       subject: "You are unsubscribed",
-      text: ack,
+      text: ackBody,
     });
     await insertEmail({
       lead_id: current.id,
       direction: "OUTBOUND",
       subject: "You are unsubscribed",
-      body_text: ack,
+      body_text: ackBody,
       template_key: "opt_out_confirm",
       metadata: { bypass_gate: true },
     });

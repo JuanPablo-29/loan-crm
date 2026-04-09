@@ -15,6 +15,7 @@ export type LeadRow = {
   intent: string | null;
   status: LeadStatus;
   redirect_token: string;
+  unsubscribe_token: string;
   clicked_at: Date | null;
   engaged_at: Date | null;
   engagement_started_at: Date | null;

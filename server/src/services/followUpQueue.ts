@@ -20,7 +20,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function scheduleFollowUpsForLead(leadId: string, from: Date): Promise<void> {
   const lead = await findLeadById(leadId);
-  if (!lead || lead.archived) return;
+  if (!lead || lead.archived || lead.status === "OPTED_OUT") return;
 
   const { rows: existing } = await pool.query(`SELECT 1 FROM follow_ups WHERE lead_id = $1 LIMIT 1`, [
     leadId,

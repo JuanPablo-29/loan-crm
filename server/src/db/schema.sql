@@ -40,6 +40,11 @@ ALTER TABLE leads ALTER COLUMN redirect_token SET DEFAULT gen_random_uuid()::tex
 ALTER TABLE leads ALTER COLUMN redirect_token SET NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_redirect_token ON leads(redirect_token);
 
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS unsubscribe_token TEXT;
+UPDATE leads SET unsubscribe_token = encode(gen_random_bytes(32), 'hex') WHERE unsubscribe_token IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_unsubscribe_token ON leads(unsubscribe_token);
+ALTER TABLE leads ALTER COLUMN unsubscribe_token SET NOT NULL;
+
 CREATE TABLE IF NOT EXISTS emails (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,

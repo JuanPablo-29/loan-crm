@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
         source: "/r/:path*",
         destination: `${api}/r/:path*`,
       },
+      {
+        source: "/unsubscribe/:path*",
+        destination: `${api}/unsubscribe/:path*`,
+      },
     ];
   },
 };

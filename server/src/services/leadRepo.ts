@@ -1,6 +1,6 @@
 import type { LeadRow, LeadStatus } from "../types.js";
 import { pool } from "../db/pool.js";
-import { generateRedirectToken } from "../utils/tokens.js";
+import { generateRedirectToken, generateUnsubscribeToken } from "../utils/tokens.js";
 
 export async function findLeadById(id: string): Promise<LeadRow | null> {
   const { rows } = await pool.query<LeadRow>(
@@ -21,6 +21,14 @@ export async function findLeadByEmail(email: string): Promise<LeadRow | null> {
 export async function findLeadByRedirectToken(token: string): Promise<LeadRow | null> {
   const { rows } = await pool.query<LeadRow>(
     `SELECT * FROM leads WHERE redirect_token = $1`,
+    [token]
+  );
+  return rows[0] ?? null;
+}
+
+export async function findLeadByUnsubscribeToken(token: string): Promise<LeadRow | null> {
+  const { rows } = await pool.query<LeadRow>(
+    `SELECT * FROM leads WHERE unsubscribe_token = $1`,
     [token]
   );
   return rows[0] ?? null;
@@ -114,9 +122,10 @@ export async function createLead(input: {
 }): Promise<LeadRow> {
   const score = input.lead_score ?? inferScoreFromIntent(input.intent);
   const redirectToken = generateRedirectToken();
+  const unsubscribeToken = generateUnsubscribeToken();
   const { rows } = await pool.query<LeadRow>(
-    `INSERT INTO leads (name, email, phone, property_address, notes, intent, lead_score, redirect_token)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO leads (name, email, phone, property_address, notes, intent, lead_score, redirect_token, unsubscribe_token)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (email) DO UPDATE SET
        name = COALESCE(EXCLUDED.name, leads.name),
        phone = COALESCE(EXCLUDED.phone, leads.phone),
@@ -125,6 +134,7 @@ export async function createLead(input: {
        intent = COALESCE(EXCLUDED.intent, leads.intent),
        lead_score = GREATEST(leads.lead_score, EXCLUDED.lead_score),
        redirect_token = COALESCE(leads.redirect_token, EXCLUDED.redirect_token),
+       unsubscribe_token = COALESCE(leads.unsubscribe_token, EXCLUDED.unsubscribe_token),
        updated_at = now()
      RETURNING *`,
     [
@@ -136,6 +146,7 @@ export async function createLead(input: {
       input.intent ?? null,
       score,
       redirectToken,
+      unsubscribeToken,
     ]
   );
   return rows[0];
