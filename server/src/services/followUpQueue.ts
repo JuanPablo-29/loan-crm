@@ -19,6 +19,9 @@ export type FollowUpJob = { leadId: string; sequenceDay: number };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function scheduleFollowUpsForLead(leadId: string, from: Date): Promise<void> {
+  const lead = await findLeadById(leadId);
+  if (!lead || lead.archived) return;
+
   const { rows: existing } = await pool.query(`SELECT 1 FROM follow_ups WHERE lead_id = $1 LIMIT 1`, [
     leadId,
   ]);
@@ -60,7 +63,15 @@ export async function cancelScheduledFollowUps(leadId: string): Promise<void> {
 async function processFollowUp(job: Job<FollowUpJob>): Promise<void> {
   const { leadId, sequenceDay } = job.data;
   const lead = await findLeadById(leadId);
-  if (!lead || lead.status === "OPTED_OUT" || lead.status === "ENGAGED") return;
+  if (!lead) return;
+  if (lead.archived) {
+    await pool.query(
+      `UPDATE follow_ups SET status = 'CANCELLED' WHERE lead_id = $1 AND sequence_day = $2 AND status = 'PENDING'`,
+      [leadId, sequenceDay]
+    );
+    return;
+  }
+  if (lead.status === "OPTED_OUT" || lead.status === "ENGAGED") return;
   if (lead.clicked_at || lead.engaged_at) return;
   if (await hasLeadRepliedAfterLastOutbound(leadId)) return;
 

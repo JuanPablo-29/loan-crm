@@ -100,7 +100,7 @@ export async function ingestRawEmail(input: {
   if (send.ok) {
     await touchEngagement(current.id);
     const updated = await findLeadById(current.id);
-    if (updated?.engagement_started_at) {
+    if (updated?.engagement_started_at && !updated.archived) {
       await scheduleFollowUpsForLead(updated.id, new Date(updated.engagement_started_at));
     }
     if (current.status === "NEW") await updateLeadStatus(current.id, "CONTACTED");

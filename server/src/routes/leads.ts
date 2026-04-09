@@ -14,6 +14,7 @@ import { listFollowUpsForLead } from "../services/followUpRepo.js";
 import type { LeadStatus } from "../types.js";
 import { pool } from "../db/pool.js";
 import { config } from "../config.js";
+import { cancelScheduledFollowUps } from "../services/followUpQueue.js";
 
 export const leadsRouter = Router();
 
@@ -184,6 +185,7 @@ leadsRouter.patch("/:id/archive", async (req, res, next) => {
     const lead = await findLeadById(req.params.id);
     if (!lead) return res.status(404).json({ error: "Not found" });
     await archiveLead(lead.id);
+    await cancelScheduledFollowUps(lead.id);
     const nextLead = await findLeadById(lead.id);
     res.json({ lead: nextLead });
   } catch (e) {
