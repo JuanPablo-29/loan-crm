@@ -41,7 +41,10 @@ ALTER TABLE leads ALTER COLUMN redirect_token SET NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_redirect_token ON leads(redirect_token);
 
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS unsubscribe_token TEXT;
-UPDATE leads SET unsubscribe_token = encode(gen_random_bytes(32), 'hex') WHERE unsubscribe_token IS NULL;
+-- Use gen_random_uuid() (core in PostgreSQL 13+) — avoids pgcrypto's gen_random_bytes(), which Railway often omits.
+UPDATE leads SET unsubscribe_token =
+  replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')
+WHERE unsubscribe_token IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_unsubscribe_token ON leads(unsubscribe_token);
 ALTER TABLE leads ALTER COLUMN unsubscribe_token SET NOT NULL;
 
