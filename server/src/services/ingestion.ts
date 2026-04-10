@@ -13,10 +13,88 @@ import { emailComplianceFooter, sendToLead } from "./leadOutbound.js";
 import { sendMail } from "./outboundMail.js";
 import { scheduleFollowUpsForLead, cancelScheduledFollowUps } from "./followUpQueue.js";
 
-const OPT_OUT_RE = /\b(stop|unsubscribe|opt\s*out|remove\s+me|cancel\s+emails?)\b/i;
+const OPT_OUT_RE = /\b(stop|unsubscribe|opt\s*out|remove\s+me|do\s+not\s+contact|cancel)\b/i;
 
+const OPT_OUT_MAX_WORDS = 300;
+
+/** Markers that usually start quoted / forwarded content (earliest wins). */
+const FORWARD_MARKERS = [
+  "\nFrom:",
+  "\r\nFrom:",
+  "\nSent:",
+  "\r\nSent:",
+  "\nSubject:",
+  "\r\nSubject:",
+  "\nTo:",
+  "\r\nTo:",
+  "\nCc:",
+  "\r\nCc:",
+  "\n-----Original Message-----",
+  "\r\n-----Original Message-----",
+  "\nBegin forwarded message:",
+  "\r\nBegin forwarded message:",
+  "Forwarded message",
+  "Original Message",
+] as const;
+
+const SIGNATURE_MARKERS = [
+  "\n--\n",
+  "\n-- \n",
+  "\r\n--\r\n",
+  "\nBest regards",
+  "\nWarm regards",
+  "\nKind regards",
+  "\nThanks,",
+  "\nThank you,",
+  "\nSent from my iPhone",
+  "\nSent from my Android",
+] as const;
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export function stripForwardedThread(body: string): string {
+  let cutoff = body.length;
+  const lower = body.toLowerCase();
+  for (const marker of FORWARD_MARKERS) {
+    const idx = lower.indexOf(marker.toLowerCase());
+    if (idx !== -1 && idx < cutoff) cutoff = idx;
+  }
+  return body.slice(0, cutoff).trimEnd();
+}
+
+export function stripSignature(body: string): string {
+  let cutoff = body.length;
+  const lower = body.toLowerCase();
+  for (const marker of SIGNATURE_MARKERS) {
+    const idx = lower.indexOf(marker.toLowerCase());
+    if (idx !== -1 && idx < cutoff) cutoff = idx;
+  }
+  return body.slice(0, cutoff).trimEnd();
+}
+
+function wordCount(text: string): number {
+  const t = text.trim();
+  if (!t) return 0;
+  return t.split(/\s+/).filter(Boolean).length;
+}
+
+/** True if cleaned body contains a direct opt-out request (use after forward/signature stripping). */
+export function isOptOutMessage(body: string): boolean {
+  return OPT_OUT_RE.test(body);
+}
+
+/** @deprecated Prefer isOptOutMessage on cleaned body + sender guard; kept for callers/tests. */
 export function bodyRequestsOptOut(text: string): boolean {
-  return OPT_OUT_RE.test(text);
+  return isOptOutMessage(stripSignature(stripForwardedThread(text)));
+}
+
+function shouldTreatInboundAsLeadOptOut(fromEmail: string, leadEmail: string, rawBody: string): boolean {
+  if (normalizeEmail(fromEmail) !== normalizeEmail(leadEmail)) return false;
+  const cleaned = stripSignature(stripForwardedThread(rawBody));
+  if (wordCount(cleaned) > OPT_OUT_MAX_WORDS) return false;
+  return isOptOutMessage(cleaned);
 }
 
 export async function ingestRawEmail(input: {
@@ -58,7 +136,7 @@ export async function ingestRawEmail(input: {
   current = await findLeadById(lead.id);
   if (!current) throw new Error("Lead missing after property update");
 
-  if (bodyRequestsOptOut(input.rawBody)) {
+  if (shouldTreatInboundAsLeadOptOut(input.fromEmail, current.email, input.rawBody)) {
     await markOptOut(current.id);
     await cancelScheduledFollowUps(current.id);
     const ack =

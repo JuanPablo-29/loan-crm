@@ -131,3 +131,9 @@ h1 {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.email-thread-toggle:focus-visible {
+  outline: 2px solid var(--ok);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -55,6 +55,98 @@ function statusClass(s: string) {
   return "tag";
 }
 
+const LONG_EMAIL_CHARS = 800;
+
+/** Inbound messages that look like forwarded portal leads or very long threads — collapse by default. */
+function isLeadSourceInquiry(e: Email): boolean {
+  if (e.direction !== "INBOUND") return false;
+  const subj = (e.subject ?? "").toLowerCase();
+  const body = e.body_text ?? "";
+  const keywordHit =
+    subj.includes("prospect") || subj.includes("lead") || subj.includes("referral");
+  return keywordHit || body.length > LONG_EMAIL_CHARS;
+}
+
+/** Outbound: only auto-collapse when long (Kari / AI). Inbound: collapse for lead-source heuristic above. */
+function isCollapsibleEmail(e: Email): boolean {
+  const len = (e.body_text ?? "").length;
+  return isLeadSourceInquiry(e) || (e.direction === "OUTBOUND" && len > LONG_EMAIL_CHARS);
+}
+
+function EmailThreadMessage({ e }: { e: Email }) {
+  const collapsible = isCollapsibleEmail(e);
+  const leadSource = isLeadSourceInquiry(e);
+  const [expanded, setExpanded] = useState(!collapsible);
+
+  const collapsedToggleLabel = leadSource ? "Show full lead email" : "Show full email";
+
+  return (
+    <div
+      className="card"
+      style={{
+        borderLeft: `4px solid ${e.direction === "INBOUND" ? "var(--accent)" : "var(--muted)"}`,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <strong>{e.direction === "INBOUND" ? "Inbound — Lead" : "Outbound — Assistant"}</strong>
+        <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
+          {new Date(e.created_at).toLocaleString()}
+        </span>
+      </div>
+      {e.subject && (
+        <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginTop: 4 }}>{e.subject}</div>
+      )}
+      {leadSource && (
+        <div style={{ fontSize: "0.7rem", color: "var(--muted)", marginTop: 8, marginBottom: 2 }}>
+          Lead source email
+        </div>
+      )}
+      <div
+        style={{
+          maxHeight: collapsible && !expanded ? 160 : undefined,
+          overflow: collapsible && !expanded ? "hidden" : undefined,
+          position: "relative",
+        }}
+      >
+        <pre
+          style={{
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            fontFamily: "inherit",
+            margin: leadSource ? "0.25rem 0 0" : "0.75rem 0 0",
+            fontSize: "0.9rem",
+          }}
+        >
+          {e.body_text}
+        </pre>
+      </div>
+      {collapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="email-thread-toggle"
+          style={{
+            marginTop: 10,
+            padding: "2px 0",
+            border: "none",
+            background: "none",
+            cursor: "pointer",
+            fontSize: "0.8125rem",
+            fontWeight: 600,
+            color: "var(--ok)",
+            textAlign: "left",
+          }}
+        >
+          {expanded ? "Show less" : collapsedToggleLabel}
+        </button>
+      )}
+      {e.template_key && (
+        <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: 8 }}>Template: {e.template_key}</div>
+      )}
+    </div>
+  );
+}
+
 export default function LeadDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -264,38 +356,7 @@ export default function LeadDetailPage() {
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
         {sortedEmails.map((e) => (
-          <div
-            key={e.id}
-            className="card"
-            style={{
-              borderLeft: `4px solid ${
-                e.direction === "INBOUND" ? "var(--accent)" : "var(--muted)"
-              }`,
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-              <strong>{e.direction === "INBOUND" ? "Inbound — Lead" : "Outbound — Assistant"}</strong>
-              <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
-                {new Date(e.created_at).toLocaleString()}
-              </span>
-            </div>
-            {e.subject && (
-              <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginTop: 4 }}>{e.subject}</div>
-            )}
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                fontFamily: "inherit",
-                margin: "0.75rem 0 0",
-                fontSize: "0.9rem",
-              }}
-            >
-              {e.body_text}
-            </pre>
-            {e.template_key && (
-              <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: 8 }}>Template: {e.template_key}</div>
-            )}
-          </div>
+          <EmailThreadMessage key={e.id} e={e} />
         ))}
         {sortedEmails.length === 0 && <p style={{ color: "var(--muted)" }}>No messages yet.</p>}
       </div>
