@@ -100,9 +100,19 @@ function shouldTreatInboundAsLeadOptOut(fromEmail: string, leadEmail: string, ra
 
 type RelevantLeadData = {
   name: string | null;
+  email: string | null;
   phone: string | null;
   price: string | null;
   location: string | null;
+  message: string | null;
+};
+
+type CleanLeadInput = {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  budget: number | null;
   message: string | null;
 };
 
@@ -110,10 +120,27 @@ function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, Math.max(0, max - 1))}…`;
 }
 
+function safeString(value: unknown): string | null {
+  if (!value) return null;
+  return String(value).trim();
+}
+
+function cleanPrice(value: unknown): number | null {
+  if (!value) return null;
+  const cleaned = String(value).replace(/[^\d]/g, "");
+  const num = Number.parseInt(cleaned, 10);
+  return Number.isNaN(num) ? null : num;
+}
+
+function nullIfUnknown(value: string | null): string | null {
+  if (!value) return null;
+  return value.trim().toLowerCase() === "unknown" ? null : value;
+}
+
 /** Parse large raw/HTML lead emails down to the fields we need for AI extraction/personalization. */
 export function extractRelevantLeadData(raw: string): RelevantLeadData {
   if (!raw) {
-    return { name: null, phone: null, price: null, location: null, message: null };
+    return { name: null, email: null, phone: null, price: null, location: null, message: null };
   }
 
   const text = raw
@@ -125,31 +152,56 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
     .replace(/\s+/g, " ")
     .trim();
 
-  const nameMatch = text.match(/New Prospect\s+([A-Za-z][A-Za-z'-]*)/i);
+  const nameMatch = text.match(/New Prospect\s+([A-Za-z]+)/i);
+  const emailMatch = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
   const phoneMatch = text.match(/\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/);
   const priceMatch = text.match(/\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/);
   const locationMatch = text.match(/\b([A-Za-z][A-Za-z\s.'-]+,\s?[A-Z]{2},?\s?\d{5}(?:-\d{4})?)\b/);
   const messageMatch = text.match(/Customer Message[:\s]*([\s\S]*?)(?:Called|Phone|Email|Best Regards|Thank you|$)/i);
+  let name = nameMatch?.[1] ?? null;
+  if (name === "You") name = null;
+  let message = messageMatch?.[1] ?? "";
+  message = message.replace(/\[.*$/, "").replace(/\s+/g, " ").trim();
 
   return {
-    name: nameMatch?.[1] ?? null,
+    name,
+    email: emailMatch?.[0] ?? null,
     phone: phoneMatch?.[0] ?? null,
     price: priceMatch?.[0] ?? null,
     location: locationMatch?.[1] ?? null,
-    message: messageMatch?.[1]?.trim() ?? null,
+    message: message || null,
   };
+}
+
+function toCleanLeadInput(extracted: RelevantLeadData): CleanLeadInput {
+  const cleanedLead: CleanLeadInput = {
+    name: safeString(extracted.name),
+    phone: safeString(extracted.phone),
+    email: safeString(extracted.email),
+    address: safeString(extracted.location),
+    budget: cleanPrice(extracted.price),
+    message: safeString(extracted.message),
+  };
+
+  cleanedLead.name = nullIfUnknown(cleanedLead.name);
+  cleanedLead.phone = nullIfUnknown(cleanedLead.phone);
+  cleanedLead.email = nullIfUnknown(cleanedLead.email);
+  cleanedLead.address = nullIfUnknown(cleanedLead.address);
+  cleanedLead.message = nullIfUnknown(cleanedLead.message);
+
+  return cleanedLead;
 }
 
 function buildAiExtractionPrompt(input: {
   fromEmail: string;
   subject?: string;
-  extracted: RelevantLeadData;
+  cleanedLead: CleanLeadInput;
 }): string {
-  const customerMessage = input.extracted.message
-    ? truncate(input.extracted.message, 700)
+  const customerMessage = input.cleanedLead.message
+    ? truncate(input.cleanedLead.message, 700)
     : `No direct customer message provided. Use only name/location context:
-Name: ${input.extracted.name || "there"}
-Location: ${input.extracted.location || "unknown"}`;
+Name: ${input.cleanedLead.name || "there"}
+Location: ${input.cleanedLead.address || "unknown"}`;
 
   const prompt = `You are extracting structured data for a mortgage CRM. Return valid JSON only with keys:
 name, email, phone, property_address, budget, notes, intent, lead_score_hint.
@@ -157,10 +209,10 @@ name, email, phone, property_address, budget, notes, intent, lead_score_hint.
 Context:
 From: ${input.fromEmail}
 Subject: ${input.subject ?? ""}
-Name: ${input.extracted.name || "there"}
-Phone: ${input.extracted.phone || "unknown"}
-Location: ${input.extracted.location || "unknown"}
-Budget: ${input.extracted.price || "unknown"}
+Name: ${input.cleanedLead.name || "there"}
+Phone: ${input.cleanedLead.phone || "unknown"}
+Location: ${input.cleanedLead.address || "unknown"}
+Budget: ${input.cleanedLead.budget ?? "unknown"}
 
 Customer Message:
 ${customerMessage}
@@ -183,21 +235,23 @@ export async function ingestRawEmail(input: {
 }): Promise<{ leadId: string; optedOut: boolean; replied: boolean }> {
   const relevantLead = extractRelevantLeadData(input.rawBody);
   console.log("[ingest] Extracted Lead:", relevantLead);
+  const cleanedLead = toCleanLeadInput(relevantLead);
+  console.log("[ingest] Clean Lead:", cleanedLead);
   const extractionPrompt = buildAiExtractionPrompt({
     fromEmail: input.fromEmail,
     subject: input.subject,
-    extracted: relevantLead,
+    cleanedLead,
   });
   const extracted = await extractLeadFieldsFromEmail(extractionPrompt);
-  const email = (extracted.email ?? input.fromEmail).trim().toLowerCase();
+  const email = normalizeEmail(extracted.email ?? cleanedLead.email ?? input.fromEmail);
   let lead = await findLeadByEmail(email);
   if (!lead) {
     lead = await createLead({
-      name: extracted.name ?? input.fromName ?? null,
+      name: extracted.name ?? cleanedLead.name ?? input.fromName ?? null,
       email,
-      phone: extracted.phone,
-      property_address: extracted.property_address,
-      notes: extracted.notes,
+      phone: extracted.phone ?? cleanedLead.phone,
+      property_address: extracted.property_address ?? cleanedLead.address,
+      notes: extracted.notes ?? cleanedLead.message,
       intent: extracted.intent,
       lead_score: extracted.lead_score_hint ?? undefined,
     });
@@ -214,7 +268,7 @@ export async function ingestRawEmail(input: {
 
   let current = await findLeadById(lead.id);
   if (!current) throw new Error("Lead missing after create");
-  await setLeadPropertyAddressIfMissing(current.id, extracted.property_address);
+  await setLeadPropertyAddressIfMissing(current.id, extracted.property_address ?? cleanedLead.address);
   current = await findLeadById(lead.id);
   if (!current) throw new Error("Lead missing after property update");
 
