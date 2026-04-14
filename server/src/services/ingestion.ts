@@ -261,8 +261,9 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
     .trim();
   console.log("[ingest] Lead Section:", truncate(leadText, 1500));
 
+  // Name before phone: first + last, first + middle + last, middle initial (e.g. "C" / "C."), multi-part (e.g. "Mary Ann Smith").
   const nameMatch = leadText.match(
-    /([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)(?:\s+[A-Za-z]+)*\s*\(\d{3}\)\s?\d{3}-\d{4}/
+    /([A-Z][a-z]+(?:\s[A-Z](?:\.|\b)|\s[A-Z][a-z]+)+)\s*\(\d{3}\)\s?\d{3}-\d{4}/
   );
   const emailMatch = leadText.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
   const phoneMatch = leadText.match(/\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/);
@@ -271,15 +272,31 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
   const locationMatch = leadText.match(/\b([A-Za-z][A-Za-z\s.'-]+,\s?[A-Z]{2},?\s?\d{5}(?:-\d{4})?)\b/);
   const messageMatch = leadText.match(/Customer Message[:\s]*([\s\S]*?)(?:Called|Phone|Email|Best Regards|Thank you|$)/i);
   let name = nameMatch?.[1] ?? null;
+  if (!name) {
+    const fallback1 = leadText.match(
+      /([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\s+[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/
+    );
+    if (fallback1) name = fallback1[1];
+  }
+  if (!name) {
+    const fallback2 = leadText.match(/New Prospect.*?\.\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)/);
+    if (fallback2) name = fallback2[1];
+  }
+  if (!name) {
+    const fallback3 = leadText.match(/Message\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)/);
+    if (fallback3) name = fallback3[1];
+  }
   if (name) {
     name = name
-      .replace(/\bLive transfer\b/gi, "")
       .replace(/\bLive\b/gi, "")
       .replace(/\btransfer\b/gi, "")
       .replace(/\s+/g, " ")
       .trim();
   }
-  console.log("[ingest] Final Clean Name:", name);
+  if (!name) {
+    console.warn("Name could not be extracted");
+  }
+  console.log("Extracted Name:", name);
   let message = messageMatch?.[1] ?? "";
   message = message.replace(/\[.*$/, "").replace(/\s+/g, " ").trim();
   let email = emailMatch?.[0] ?? null;
