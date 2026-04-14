@@ -70,6 +70,8 @@ export type LeadListItem = LeadRow & {
   pending_follow_up_count: number;
   last_outbound_email_at: Date | null;
   awaiting_reply: boolean;
+  /** From failed_emails by recipient match; not CRM lead status. */
+  email_delivery_status: "queued" | "failed" | "sent";
 };
 
 const LIST_ORDER: Record<"updated" | "score" | "created" | "activity", string> = {
@@ -97,7 +99,20 @@ export async function listLeadsWithSummary(filters: {
     `SELECT l.*,
       COALESCE(fu.pending_cnt, 0)::int AS pending_follow_up_count,
       ob.last_out AS last_outbound_email_at,
-      (ob.last_out IS NOT NULL AND NOT COALESCE(inb.has_reply_after, false)) AS awaiting_reply
+      (ob.last_out IS NOT NULL AND NOT COALESCE(inb.has_reply_after, false)) AS awaiting_reply,
+      CASE
+        WHEN EXISTS (
+          SELECT 1 FROM failed_emails fe
+          WHERE lower(btrim(fe.to_email)) = lower(btrim(l.email))
+            AND fe.status IN ('pending', 'retrying')
+        ) THEN 'queued'
+        WHEN EXISTS (
+          SELECT 1 FROM failed_emails fe
+          WHERE lower(btrim(fe.to_email)) = lower(btrim(l.email))
+            AND fe.status = 'failed'
+        ) THEN 'failed'
+        ELSE 'sent'
+      END AS email_delivery_status
     FROM leads l
     LEFT JOIN (
       SELECT lead_id, COUNT(*)::int AS pending_cnt

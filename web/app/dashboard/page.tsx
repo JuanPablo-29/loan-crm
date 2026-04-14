@@ -23,6 +23,8 @@ type Lead = {
   last_outbound_email_at: string | null;
   awaiting_reply: boolean;
   archived: boolean;
+  /** Resend / failed_emails queue; not CRM lead status. */
+  email_delivery_status?: "queued" | "failed" | "sent";
 };
 
 const STATUSES = ["", "NEW", "CONTACTED", "FOLLOW_UP", "ENGAGED", "OPTED_OUT"];
@@ -56,6 +58,32 @@ function formatShort(iso: string | null) {
 function truncateAddress(value: string | null, max = 34) {
   if (!value) return "—";
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function EmailDeliveryBadge({ status }: { status?: string }) {
+  if (status === "queued") {
+    return (
+      <span
+        className="tag warn"
+        title="Outbound email is in the retry queue (failed_emails)"
+        style={{ marginTop: 6, display: "inline-block" }}
+      >
+        Queued ⏳
+      </span>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span
+        className="tag danger"
+        title="Outbound retry exhausted (failed_emails)"
+        style={{ marginTop: 6, display: "inline-block" }}
+      >
+        Failed ❌
+      </span>
+    );
+  }
+  return null;
 }
 
 export default function DashboardPage() {
@@ -179,7 +207,7 @@ export default function DashboardPage() {
               width: "100%",
               borderCollapse: "collapse",
               fontSize: "0.9rem",
-              minWidth: 920,
+              minWidth: 1000,
             }}
           >
             <thead>
@@ -188,6 +216,7 @@ export default function DashboardPage() {
                 <th style={{ padding: "0.65rem 0.5rem" }}>Phone</th>
                 <th style={{ padding: "0.65rem 0.5rem" }}>Property</th>
                 <th style={{ padding: "0.65rem 0.5rem" }}>Status</th>
+                <th style={{ padding: "0.65rem 0.5rem" }}>Delivery</th>
                 <th style={{ padding: "0.65rem 0.5rem" }}>Created</th>
                 <th style={{ padding: "0.65rem 0.5rem" }}>Last sent</th>
                 <th style={{ padding: "0.65rem 0.5rem" }}>Clicked</th>
@@ -246,6 +275,9 @@ export default function DashboardPage() {
                     <td style={{ padding: "0.65rem 0.5rem", verticalAlign: "top" }}>
                       <span className={statusClass(l.status)}>{l.status}</span>
                       <div style={{ color: "var(--muted)", fontSize: "0.75rem", marginTop: 6 }}>Score {l.lead_score}</div>
+                    </td>
+                    <td style={{ padding: "0.65rem 0.5rem", verticalAlign: "top" }}>
+                      <EmailDeliveryBadge status={l.email_delivery_status} />
                     </td>
                     <td style={{ padding: "0.65rem 0.5rem", color: "var(--muted)", verticalAlign: "top" }}>
                       {formatShort(l.created_at)}
