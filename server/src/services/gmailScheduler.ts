@@ -13,6 +13,7 @@ async function runPoll(): Promise<void> {
       console.log(`[gmail-scheduler] processed ${result.processed} message(s)`);
     }
   } catch (err) {
+    // invalid_grant is handled inside pollGmailOnce (no stack spam)
     console.error("[gmail-scheduler] poll failed", err);
   } finally {
     running = false;

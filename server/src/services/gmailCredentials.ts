@@ -61,6 +61,15 @@ export async function saveGmailRefreshTokenToDb(refreshToken: string): Promise<v
   );
 }
 
+/** Remove DB-stored refresh token (e.g. after Google returns invalid_grant). Env GMAIL_REFRESH_TOKEN will be used on next poll if set. */
+export async function clearStoredGmailRefreshToken(): Promise<void> {
+  try {
+    await pool.query(`DELETE FROM gmail_oauth_tokens WHERE singleton_id = 1`);
+  } catch (e) {
+    console.warn("[gmail] Failed to clear stored refresh token", e);
+  }
+}
+
 /**
  * Apply stored credentials so googleapis can refresh access tokens automatically on API calls.
  */
