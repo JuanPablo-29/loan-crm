@@ -133,6 +133,21 @@ function cleanPrice(value: string | null): number | null {
   return Number.isNaN(num) ? null : num;
 }
 
+function getBestPrice(matches: string[] | null): string | null {
+  if (!matches) return null;
+
+  let best: string | null = null;
+  let max = 0;
+  for (const m of matches) {
+    const num = Number.parseInt(m.replace(/[^\d]/g, ""), 10);
+    if (!Number.isNaN(num) && num > max) {
+      max = num;
+      best = m;
+    }
+  }
+  return best;
+}
+
 function nullIfUnknown(value: string | null): string | null {
   if (!value) return null;
   return value.trim().toLowerCase() === "unknown" ? null : value;
@@ -246,10 +261,13 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
     .trim();
   console.log("[ingest] Lead Section:", truncate(leadText, 1500));
 
-  const nameMatch = leadText.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\s*\(\d{3}\)\s?\d{3}-\d{4}/);
+  const nameMatch = leadText.match(
+    /([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)(?:\s+[A-Za-z]+)*\s*\(\d{3}\)\s?\d{3}-\d{4}/
+  );
   const emailMatch = leadText.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
   const phoneMatch = leadText.match(/\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/);
-  const priceMatch = leadText.match(/\$\d{1,3}(?:,\d{3})*/);
+  const priceMatches = leadText.match(/\$\d[\d,]*/g);
+  const bestPrice = getBestPrice(priceMatches);
   const locationMatch = leadText.match(/\b([A-Za-z][A-Za-z\s.'-]+,\s?[A-Z]{2},?\s?\d{5}(?:-\d{4})?)\b/);
   const messageMatch = leadText.match(/Customer Message[:\s]*([\s\S]*?)(?:Called|Phone|Email|Best Regards|Thank you|$)/i);
   const name = nameMatch?.[1] ?? null;
@@ -271,7 +289,7 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
     name,
     email,
     phone,
-    price: priceMatch?.[0] ?? null,
+    price: bestPrice,
     location: locationMatch?.[1] ?? null,
     message: message || null,
   };
