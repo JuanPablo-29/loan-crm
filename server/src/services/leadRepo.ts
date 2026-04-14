@@ -2,6 +2,33 @@ import type { LeadRow, LeadStatus } from "../types.js";
 import { pool } from "../db/pool.js";
 import { generateRedirectToken, generateUnsubscribeToken } from "../utils/tokens.js";
 
+function toSafeInt(value: unknown, fieldName: string): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^\d-]/g, "");
+    if (!cleaned) {
+      console.warn(`[leadRepo] invalid numeric value for ${fieldName}:`, value);
+      return null;
+    }
+    const parsed = Number.parseInt(cleaned, 10);
+    if (Number.isNaN(parsed)) {
+      console.warn(`[leadRepo] invalid numeric value for ${fieldName}:`, value);
+      return null;
+    }
+    return parsed;
+  }
+  if (value !== null && value !== undefined) {
+    console.warn(`[leadRepo] invalid numeric value for ${fieldName}:`, value);
+  }
+  return null;
+}
+
+function sanitizeLeadScore(value: unknown, intent: string | null | undefined): number {
+  const parsed = toSafeInt(value, "lead_score");
+  if (parsed === null) return inferScoreFromIntent(intent);
+  return Math.min(100, Math.max(0, parsed));
+}
+
 export async function findLeadById(id: string): Promise<LeadRow | null> {
   const { rows } = await pool.query<LeadRow>(
     `SELECT * FROM leads WHERE id = $1`,
@@ -118,9 +145,9 @@ export async function createLead(input: {
   property_address?: string | null;
   notes?: string | null;
   intent?: string | null;
-  lead_score?: number;
+  lead_score?: number | string | null;
 }): Promise<LeadRow> {
-  const score = input.lead_score ?? inferScoreFromIntent(input.intent);
+  const score = sanitizeLeadScore(input.lead_score, input.intent);
   const redirectToken = generateRedirectToken();
   const unsubscribeToken = generateUnsubscribeToken();
   const { rows } = await pool.query<LeadRow>(

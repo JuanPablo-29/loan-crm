@@ -8,6 +8,68 @@ const client = config.openaiApiKey
   ? new OpenAI({ apiKey: config.openaiApiKey })
   : null;
 
+const NULLISH_TEXT = /^(?:n\/a|na|none|null|unknown|live transfer)$/i;
+
+type ExtractedLeadFields = {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  property_address: string | null;
+  budget: string | null;
+  notes: string | null;
+  intent: string | null;
+  lead_score_hint: number | null;
+};
+
+function sanitizeTextField(value: unknown, fieldName: string): string | null {
+  if (typeof value !== "string") {
+    if (value !== null && value !== undefined) {
+      console.warn(`[aiAgent] invalid text value for ${fieldName}:`, value);
+    }
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || NULLISH_TEXT.test(trimmed)) return null;
+  return trimmed;
+}
+
+function sanitizeLeadScoreHint(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.min(100, Math.max(0, Math.trunc(value)));
+  }
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^\d-]/g, "");
+    if (!cleaned || NULLISH_TEXT.test(value.trim())) {
+      console.warn("[aiAgent] invalid numeric value for lead_score_hint:", value);
+      return null;
+    }
+    const parsed = Number.parseInt(cleaned, 10);
+    if (Number.isNaN(parsed)) {
+      console.warn("[aiAgent] invalid numeric value for lead_score_hint:", value);
+      return null;
+    }
+    return Math.min(100, Math.max(0, parsed));
+  }
+  if (value !== null && value !== undefined) {
+    console.warn("[aiAgent] invalid numeric value for lead_score_hint:", value);
+  }
+  return null;
+}
+
+function sanitizeExtractedLeadFields(value: unknown): ExtractedLeadFields {
+  const src = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  return {
+    name: sanitizeTextField(src.name, "name"),
+    email: sanitizeTextField(src.email, "email"),
+    phone: sanitizeTextField(src.phone, "phone"),
+    property_address: sanitizeTextField(src.property_address, "property_address"),
+    budget: sanitizeTextField(src.budget, "budget"),
+    notes: sanitizeTextField(src.notes, "notes"),
+    intent: sanitizeTextField(src.intent, "intent") ?? "inquiry",
+    lead_score_hint: sanitizeLeadScoreHint(src.lead_score_hint),
+  };
+}
+
 function firstNameFromLead(lead: Pick<LeadRow, "name">): string {
   const raw = (lead.name ?? "").trim();
   if (!raw) return "there";
@@ -33,16 +95,7 @@ function buildLeadSummary(lead: Pick<LeadRow, "name" | "email" | "phone" | "prop
   ].join("\n");
 }
 
-export async function extractLeadFieldsFromEmail(raw: string): Promise<{
-  name: string | null;
-  email: string | null;
-  phone: string | null;
-  property_address: string | null;
-  budget: string | null;
-  notes: string | null;
-  intent: string | null;
-  lead_score_hint: number | null;
-}> {
+export async function extractLeadFieldsFromEmail(raw: string): Promise<ExtractedLeadFields> {
   if (!client) {
     return {
       name: null,
@@ -71,16 +124,7 @@ export async function extractLeadFieldsFromEmail(raw: string): Promise<{
     });
     const text = res.choices[0]?.message?.content;
     if (!text) throw new Error("No extraction from model");
-    return JSON.parse(text) as {
-      name: string | null;
-      email: string | null;
-      phone: string | null;
-      property_address: string | null;
-      budget: string | null;
-      notes: string | null;
-      intent: string | null;
-      lead_score_hint: number | null;
-    };
+    return sanitizeExtractedLeadFields(JSON.parse(text));
   } catch {
     return {
       name: null,
