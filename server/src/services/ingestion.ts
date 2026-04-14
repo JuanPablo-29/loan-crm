@@ -192,27 +192,23 @@ function normalizePhoneDigits(value: string): string {
   return value.replace(/[^\d]/g, "");
 }
 
-function getLoanOfficerPhoneFromEnv(): string | null {
-  const p = process.env.LOAN_OFFICER_PHONE?.trim();
-  if (!p) return null;
-  const digits = normalizePhoneDigits(p);
-  return digits.length > 0 ? digits : null;
-}
-
 export function extractLeadSection(raw: string): string {
   if (!raw) return "";
 
-  const text = raw
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const text = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
-  const startIndex = text.indexOf("New Prospect");
-  if (startIndex === -1) return text;
+  const markers = ["New Prospect", "New Bonus Lead"];
 
-  const sliced = text.slice(startIndex);
+  let startIndex = -1;
+  for (const marker of markers) {
+    const i = text.indexOf(marker);
+    if (i !== -1) {
+      startIndex = i;
+      break;
+    }
+  }
+
+  const sliced = startIndex !== -1 ? text.slice(startIndex) : text;
 
   // Stop before known footer/system tails in forwarded marketplace emails.
   const endMarkers = [
@@ -270,7 +266,7 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
     .replace(/&amp;/gi, "&")
     .replace(/\s+/g, " ")
     .trim();
-  console.log("[ingest] Lead Section:", truncate(leadText, 1500));
+  console.log("Final Lead Section Used:", leadText);
 
   // Name before phone: supports full names, middle initials, and optional "Live transfer" noise.
   const nameMatch = leadText.match(
@@ -325,13 +321,21 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
   let email = emailMatch?.[0] ?? null;
   let phone = phoneMatch?.[0] ?? null;
 
-  const loanOfficerEmail = process.env.LOAN_OFFICER_EMAIL?.trim().toLowerCase();
-  if (email && loanOfficerEmail && email.trim().toLowerCase() === loanOfficerEmail) {
+  const officerEmailRaw = process.env.LOAN_OFFICER_EMAIL?.trim();
+  if (officerEmailRaw && email && email.trim().toLowerCase() === officerEmailRaw.toLowerCase()) {
     email = null;
   }
-  const loanOfficerPhone = getLoanOfficerPhoneFromEnv();
-  if (phone && loanOfficerPhone && normalizePhoneDigits(phone) === loanOfficerPhone) {
-    phone = null;
+
+  const officerPhoneRaw = process.env.LOAN_OFFICER_PHONE?.trim();
+  if (officerPhoneRaw && phone) {
+    if (phone.trim() === officerPhoneRaw) {
+      phone = null;
+    } else {
+      const officerDigits = normalizePhoneDigits(officerPhoneRaw);
+      if (officerDigits && normalizePhoneDigits(phone) === officerDigits) {
+        phone = null;
+      }
+    }
   }
 
   return {
