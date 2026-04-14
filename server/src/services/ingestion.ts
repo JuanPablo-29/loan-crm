@@ -126,9 +126,9 @@ function safeString(value: unknown): string | null {
   return String(value).trim();
 }
 
-function cleanPrice(value: unknown): number | null {
+function cleanPrice(value: string | null): number | null {
   if (!value) return null;
-  const cleaned = String(value).replace(/[^\d]/g, "");
+  const cleaned = value.replace(/[^\d]/g, "");
   const num = Number.parseInt(cleaned, 10);
   return Number.isNaN(num) ? null : num;
 }
@@ -246,14 +246,13 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
     .trim();
   console.log("[ingest] Lead Section:", truncate(leadText, 1500));
 
-  const nameMatch = leadText.match(/New Prospect\s+([A-Za-z]+)/i);
+  const nameMatch = leadText.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\s*\(\d{3}\)\s?\d{3}-\d{4}/);
   const emailMatch = leadText.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
   const phoneMatch = leadText.match(/\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/);
-  const priceMatch = leadText.match(/\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/);
+  const priceMatch = leadText.match(/\$\d{1,3}(?:,\d{3})*/);
   const locationMatch = leadText.match(/\b([A-Za-z][A-Za-z\s.'-]+,\s?[A-Z]{2},?\s?\d{5}(?:-\d{4})?)\b/);
   const messageMatch = leadText.match(/Customer Message[:\s]*([\s\S]*?)(?:Called|Phone|Email|Best Regards|Thank you|$)/i);
-  let name = nameMatch?.[1] ?? null;
-  if (name === "You") name = null;
+  const name = nameMatch?.[1] ?? null;
   let message = messageMatch?.[1] ?? "";
   message = message.replace(/\[.*$/, "").replace(/\s+/g, " ").trim();
   let email = emailMatch?.[0] ?? null;
@@ -287,6 +286,10 @@ function toCleanLeadInput(extracted: RelevantLeadData): CleanLeadInput {
     budget: cleanPrice(extracted.price),
     message: safeString(extracted.message),
   };
+
+  if (cleanedLead.budget && cleanedLead.budget < 1000) {
+    console.warn("[ingest] Suspicious budget detected:", cleanedLead.budget);
+  }
 
   cleanedLead.name = nullIfUnknown(cleanedLead.name);
   cleanedLead.phone = nullIfUnknown(cleanedLead.phone);
