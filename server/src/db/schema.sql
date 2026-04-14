@@ -114,3 +114,23 @@ CREATE TABLE IF NOT EXISTS gmail_oauth_tokens (
   refresh_token TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS failed_emails (
+  id SERIAL PRIMARY KEY,
+  to_email TEXT NOT NULL,
+  subject TEXT,
+  html TEXT,
+  text TEXT,
+  error TEXT,
+  error_type TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'retrying', 'sent', 'failed')),
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  next_retry_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE failed_emails ADD COLUMN IF NOT EXISTS error_type TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_failed_emails_pending_retry
+  ON failed_emails (status, next_retry_at)
+  WHERE status IN ('pending', 'retrying');

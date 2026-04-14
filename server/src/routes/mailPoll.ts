@@ -24,7 +24,14 @@ mailPollRouter.post("/test", async (req, res, next) => {
   try {
     const parsed = sendTestSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-    await sendEmail(parsed.data);
+    const sent = await sendEmail(parsed.data);
+    if (!sent.ok) {
+      return res.status(502).json({
+        ok: false,
+        queued: true,
+        message: "Send failed; stored for automatic retry",
+      });
+    }
     res.json({ ok: true });
   } catch (e) {
     next(e);

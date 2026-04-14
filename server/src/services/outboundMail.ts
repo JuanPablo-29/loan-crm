@@ -25,11 +25,20 @@ export async function sendMail(input: SendMailInput): Promise<{ ok: boolean; rea
     return { ok: false, reason: "empty_body" };
   }
   try {
-    await sendEmail({
+    const html = input.html ?? textToHtml(input.text);
+    const sent = await sendEmail({
       to: input.to,
       subject: input.subject,
-      html: input.html ?? textToHtml(input.text),
+      html,
+      textForRecord: input.text,
     });
+    if (!sent.ok) {
+      console.error("[mail] Outbound send failed (queued for retry if applicable)", {
+        to: input.to,
+        subject: input.subject,
+      });
+      return { ok: false, reason: "email_send_failed" };
+    }
     return { ok: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown outbound send error";

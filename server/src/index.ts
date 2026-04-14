@@ -12,6 +12,7 @@ import { authRouter } from "./routes/auth.js";
 import { googleOAuthRouter } from "./routes/googleOAuth.js";
 import { startFollowUpWorker } from "./services/followUpQueue.js";
 import { startGmailScheduler } from "./services/gmailScheduler.js";
+import { startEmailRetryScheduler } from "./services/emailRetryWorker.js";
 import { requireAuth } from "./middleware/auth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { upsertSeedUser } from "./services/auth.js";
@@ -62,6 +63,7 @@ async function main() {
   await upsertSeedUser();
   startFollowUpWorker();
   startGmailScheduler();
+  startEmailRetryScheduler();
   app.listen(config.port, () => {
     console.log(`API listening on http://localhost:${config.port}`);
   });
