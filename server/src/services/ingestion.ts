@@ -261,9 +261,9 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
     .trim();
   console.log("[ingest] Lead Section:", truncate(leadText, 1500));
 
-  // Name before phone: first + last, first + middle + last, middle initial (e.g. "C" / "C."), multi-part (e.g. "Mary Ann Smith").
+  // Name before phone: supports full names, middle initials, and optional "Live transfer" noise.
   const nameMatch = leadText.match(
-    /([A-Z][a-z]+(?:\s[A-Z](?:\.|\b)|\s[A-Z][a-z]+)+)\s*\(\d{3}\)\s?\d{3}-\d{4}/
+    /([A-Z][a-z]+(?:\s(?:[A-Z](?:\.|\b)|[A-Z][a-z]+))+)(?:\s+Live(?:\s+transfer)?)?\s*\(\d{3}\)\s?\d{3}-\d{4}/
   );
   const emailMatch = leadText.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
   const phoneMatch = leadText.match(/\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/);
@@ -274,17 +274,29 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
   let name = nameMatch?.[1] ?? null;
   if (!name) {
     const fallback1 = leadText.match(
-      /([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\s+[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/
+      /([A-Z][a-z]+(?:\s(?:[A-Z](?:\.|\b)|[A-Z][a-z]+))+)\s+[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/
     );
     if (fallback1) name = fallback1[1];
   }
   if (!name) {
-    const fallback2 = leadText.match(/New Prospect.*?\.\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)/);
+    const fallback2 = leadText.match(
+      /New Prospect.*?\.\s+([A-Z][a-z]+(?:\s(?:[A-Z](?:\.|\b)|[A-Z][a-z]+))+)/i
+    );
     if (fallback2) name = fallback2[1];
   }
   if (!name) {
-    const fallback3 = leadText.match(/Message\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)/);
+    const fallback3 = leadText.match(/Message\s+([A-Z][a-z]+(?:\s(?:[A-Z](?:\.|\b)|[A-Z][a-z]+))+)/);
     if (fallback3) name = fallback3[1];
+  }
+  if (!name) {
+    const singleNameMatch = leadText.match(
+      /New Prospect.*?\.\s+([A-Z][a-z]+)\s*\(\d{3}\)\s?\d{3}-\d{4}/
+    );
+    if (singleNameMatch) name = singleNameMatch[1];
+  }
+  if (!name) {
+    const phoneAnchorSingleName = leadText.match(/([A-Z][a-z]+)\s*\(\d{3}\)\s?\d{3}-\d{4}/);
+    if (phoneAnchorSingleName) name = phoneAnchorSingleName[1];
   }
   if (name) {
     name = name
