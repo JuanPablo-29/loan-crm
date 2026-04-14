@@ -270,7 +270,16 @@ export function extractRelevantLeadData(raw: string): RelevantLeadData {
   const bestPrice = getBestPrice(priceMatches);
   const locationMatch = leadText.match(/\b([A-Za-z][A-Za-z\s.'-]+,\s?[A-Z]{2},?\s?\d{5}(?:-\d{4})?)\b/);
   const messageMatch = leadText.match(/Customer Message[:\s]*([\s\S]*?)(?:Called|Phone|Email|Best Regards|Thank you|$)/i);
-  const name = nameMatch?.[1] ?? null;
+  let name = nameMatch?.[1] ?? null;
+  if (name) {
+    name = name
+      .replace(/\bLive transfer\b/gi, "")
+      .replace(/\bLive\b/gi, "")
+      .replace(/\btransfer\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  console.log("[ingest] Final Clean Name:", name);
   let message = messageMatch?.[1] ?? "";
   message = message.replace(/\[.*$/, "").replace(/\s+/g, " ").trim();
   let email = emailMatch?.[0] ?? null;

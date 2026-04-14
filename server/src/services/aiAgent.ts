@@ -23,11 +23,12 @@ type ExtractedLeadFields = {
 
 function toSafeString(value: unknown, fieldName: string): string | null {
   if (value === null || value === undefined) return null;
-  const str = String(value).trim();
-  if (!str || NULLISH_TEXT.test(str)) {
+  if (typeof value !== "string") {
     console.warn(`[aiAgent] invalid text value for ${fieldName}:`, value);
     return null;
   }
+  const str = value.trim();
+  if (!str || NULLISH_TEXT.test(str)) return null;
   return str;
 }
 
