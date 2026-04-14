@@ -12,6 +12,7 @@ import { extractLeadFieldsFromEmail, generatePersonalizedOutboundEmail } from ".
 import { emailComplianceFooter, sendToLead } from "./leadOutbound.js";
 import { sendMail } from "./outboundMail.js";
 import { scheduleFollowUpsForLead, cancelScheduledFollowUps } from "./followUpQueue.js";
+import { config } from "../config.js";
 
 const OPT_OUT_RE = /\b(stop|unsubscribe|opt\s*out|remove\s+me|do\s+not\s+contact|cancel)\b/i;
 const AI_EXTRACTION_PROMPT_MAX_CHARS = 2000;
@@ -137,36 +138,140 @@ function nullIfUnknown(value: string | null): string | null {
   return value.trim().toLowerCase() === "unknown" ? null : value;
 }
 
+function hasValidEmail(lead: { email?: string | null; declinedEmail?: boolean }): boolean {
+  if (lead.declinedEmail) return false;
+  return !!lead.email && lead.email.includes("@");
+}
+
+function normalizeOptionalEmail(value: string | null | undefined): string | null {
+  const v = value?.trim().toLowerCase();
+  if (!v || !v.includes("@")) return null;
+  return v;
+}
+
+function noEmailFallbackAddress(seed: string): string {
+  const compact = seed.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 40) || "lead";
+  return `noemail+${compact}-${Date.now()}@invalid.local`;
+}
+
+function getLoanOfficerRecipientEmail(): string {
+  const envOfficer = process.env.LOAN_OFFICER_EMAIL?.trim();
+  if (envOfficer) return envOfficer;
+  const fromMatch = config.emailFrom.match(/<([^>]+)>/);
+  if (fromMatch?.[1]) return fromMatch[1].trim();
+  return config.emailFrom.trim();
+}
+
+function normalizePhoneDigits(value: string): string {
+  return value.replace(/[^\d]/g, "");
+}
+
+function getLoanOfficerPhoneFromEnv(): string | null {
+  const p = process.env.LOAN_OFFICER_PHONE?.trim();
+  if (!p) return null;
+  const digits = normalizePhoneDigits(p);
+  return digits.length > 0 ? digits : null;
+}
+
+export function extractLeadSection(raw: string): string {
+  if (!raw) return "";
+
+  const text = raw
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const startIndex = text.indexOf("New Prospect");
+  if (startIndex === -1) return text;
+
+  const sliced = text.slice(startIndex);
+
+  // Stop before known footer/system tails in forwarded marketplace emails.
+  const endMarkers = [
+    "Thank you, Realtor.com",
+    "To unsubscribe from transactional emails",
+    "Terms of Use",
+    "Privacy",
+    "Equal Housing",
+    "Sent from",
+    "View full listing",
+  ];
+
+  let endIndex = sliced.length;
+  for (const marker of endMarkers) {
+    const i = sliced.indexOf(marker);
+    if (i !== -1 && i < endIndex) endIndex = i;
+  }
+  return sliced.slice(0, endIndex).trim();
+}
+
+async function forwardLeadToLoanOfficer(input: { leadId: string; lead: CleanLeadInput }): Promise<void> {
+  const subject = `New Lead (No Email) - ${input.lead.name || "Unknown"}`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5;">
+      <p><strong>New lead requires manual follow-up</strong></p>
+      <p><strong>Name:</strong> ${input.lead.name || "N/A"}</p>
+      <p><strong>Phone:</strong> ${input.lead.phone || "N/A"}</p>
+      <p><strong>Location:</strong> ${input.lead.address || "N/A"}</p>
+      <p><strong>Budget:</strong> ${input.lead.budget ?? "N/A"}</p>
+      <p><strong>Message:</strong><br/>${(input.lead.message || "No message provided").replace(/\n/g, "<br/>")}</p>
+    </div>
+  `;
+  const to = getLoanOfficerRecipientEmail();
+  const result = await sendMail({
+    to,
+    subject,
+    text: `New lead requires manual follow-up\n\nName: ${input.lead.name || "N/A"}\nPhone: ${input.lead.phone || "N/A"}\nLocation: ${input.lead.address || "N/A"}\nBudget: ${input.lead.budget ?? "N/A"}\n\nMessage:\n${input.lead.message || "No message provided"}`,
+    html,
+  });
+  if (!result.ok) {
+    console.warn("[ingest] failed to forward no-email lead to loan officer", { leadId: input.leadId, to });
+    return;
+  }
+  console.log("Forwarded no-email lead to loan officer:", input.leadId);
+}
+
 /** Parse large raw/HTML lead emails down to the fields we need for AI extraction/personalization. */
 export function extractRelevantLeadData(raw: string): RelevantLeadData {
   if (!raw) {
     return { name: null, email: null, phone: null, price: null, location: null, message: null };
   }
 
-  const text = raw
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<[^>]*>/g, " ")
+  const leadText = extractLeadSection(raw)
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/\s+/g, " ")
     .trim();
+  console.log("[ingest] Lead Section:", truncate(leadText, 1500));
 
-  const nameMatch = text.match(/New Prospect\s+([A-Za-z]+)/i);
-  const emailMatch = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
-  const phoneMatch = text.match(/\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/);
-  const priceMatch = text.match(/\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/);
-  const locationMatch = text.match(/\b([A-Za-z][A-Za-z\s.'-]+,\s?[A-Z]{2},?\s?\d{5}(?:-\d{4})?)\b/);
-  const messageMatch = text.match(/Customer Message[:\s]*([\s\S]*?)(?:Called|Phone|Email|Best Regards|Thank you|$)/i);
+  const nameMatch = leadText.match(/New Prospect\s+([A-Za-z]+)/i);
+  const emailMatch = leadText.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i);
+  const phoneMatch = leadText.match(/\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/);
+  const priceMatch = leadText.match(/\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/);
+  const locationMatch = leadText.match(/\b([A-Za-z][A-Za-z\s.'-]+,\s?[A-Z]{2},?\s?\d{5}(?:-\d{4})?)\b/);
+  const messageMatch = leadText.match(/Customer Message[:\s]*([\s\S]*?)(?:Called|Phone|Email|Best Regards|Thank you|$)/i);
   let name = nameMatch?.[1] ?? null;
   if (name === "You") name = null;
   let message = messageMatch?.[1] ?? "";
   message = message.replace(/\[.*$/, "").replace(/\s+/g, " ").trim();
+  let email = emailMatch?.[0] ?? null;
+  let phone = phoneMatch?.[0] ?? null;
+
+  const loanOfficerEmail = process.env.LOAN_OFFICER_EMAIL?.trim().toLowerCase();
+  if (email && loanOfficerEmail && email.trim().toLowerCase() === loanOfficerEmail) {
+    email = null;
+  }
+  const loanOfficerPhone = getLoanOfficerPhoneFromEnv();
+  if (phone && loanOfficerPhone && normalizePhoneDigits(phone) === loanOfficerPhone) {
+    phone = null;
+  }
 
   return {
     name,
-    email: emailMatch?.[0] ?? null,
-    phone: phoneMatch?.[0] ?? null,
+    email,
+    phone,
     price: priceMatch?.[0] ?? null,
     location: locationMatch?.[1] ?? null,
     message: message || null,
@@ -243,12 +348,17 @@ export async function ingestRawEmail(input: {
     cleanedLead,
   });
   const extracted = await extractLeadFieldsFromEmail(extractionPrompt);
-  const email = normalizeEmail(extracted.email ?? cleanedLead.email ?? input.fromEmail);
-  let lead = await findLeadByEmail(email);
+  const declinedEmail = /declined to provide email/i.test(input.rawBody);
+  const extractedEmail = normalizeOptionalEmail(extracted.email ?? cleanedLead.email);
+  const usingLeadEmail = hasValidEmail({ email: extractedEmail, declinedEmail });
+  const storageEmail = usingLeadEmail
+    ? normalizeEmail(extractedEmail as string)
+    : noEmailFallbackAddress(input.externalId ?? cleanedLead.phone ?? cleanedLead.name ?? input.fromEmail);
+  let lead = await findLeadByEmail(storageEmail);
   if (!lead) {
     lead = await createLead({
       name: extracted.name ?? cleanedLead.name ?? input.fromName ?? null,
-      email,
+      email: storageEmail,
       phone: extracted.phone ?? cleanedLead.phone,
       property_address: extracted.property_address ?? cleanedLead.address,
       notes: extracted.notes ?? cleanedLead.message,
@@ -271,6 +381,12 @@ export async function ingestRawEmail(input: {
   await setLeadPropertyAddressIfMissing(current.id, extracted.property_address ?? cleanedLead.address);
   current = await findLeadById(lead.id);
   if (!current) throw new Error("Lead missing after property update");
+
+  if (!usingLeadEmail) {
+    await forwardLeadToLoanOfficer({ leadId: current.id, lead: cleanedLead });
+    console.log("Lead routed to manual follow-up (no email):", current.id);
+    return { leadId: current.id, optedOut: false, replied: false };
+  }
 
   if (shouldTreatInboundAsLeadOptOut(input.fromEmail, current.email, input.rawBody)) {
     await markOptOut(current.id);
