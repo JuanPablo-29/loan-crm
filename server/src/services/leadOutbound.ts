@@ -25,11 +25,14 @@ function trackedApplicationLink(lead: LeadRow): string {
   return `${base}/r/${lead.redirect_token}`;
 }
 
-export async function canSendToLead(lead: LeadRow): Promise<{ ok: true } | { ok: false; reason: string }> {
+export async function canSendToLead(
+  lead: LeadRow,
+  options?: { bypassInterSendThrottle?: boolean }
+): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (lead.status === "OPTED_OUT") return { ok: false, reason: "opted_out" };
   const n = await countOutboundLast24h(lead.id);
   if (n >= config.maxEmailsPerLeadPerDay) return { ok: false, reason: "daily_cap" };
-  if (lead.last_outbound_at) {
+  if (!options?.bypassInterSendThrottle && lead.last_outbound_at) {
     const diffMin = (Date.now() - new Date(lead.last_outbound_at).getTime()) / 60000;
     if (diffMin < config.minMinutesBetweenSends) return { ok: false, reason: "throttle" };
   }
@@ -44,10 +47,14 @@ export type SendToLeadInput = {
   dedupKey: string;
   skipFooter?: boolean;
   includeTrackedLink?: boolean;
+  /** Dashboard manual send: bypass min-minutes-between-sends (still enforces opt-out + daily cap). */
+  isManual?: boolean;
 };
 
 export async function sendToLead(input: SendToLeadInput): Promise<{ ok: boolean; reason?: string }> {
-  const gate = await canSendToLead(input.lead);
+  const gate = await canSendToLead(input.lead, {
+    bypassInterSendThrottle: input.isManual === true,
+  });
   if (!gate.ok) return { ok: false, reason: gate.reason };
 
   const dup = await pool.query(`SELECT 1 FROM send_dedup WHERE lead_id = $1 AND dedup_key = $2`, [

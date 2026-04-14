@@ -55,6 +55,13 @@ function statusClass(s: string) {
   return "tag";
 }
 
+function isValidLeadEmailForResend(email: string): boolean {
+  const t = email.trim();
+  if (!t.includes("@")) return false;
+  if (t.toLowerCase().endsWith("@invalid.local")) return false;
+  return true;
+}
+
 const LONG_EMAIL_CHARS = 800;
 
 /** Inbound messages that look like forwarded portal leads or very long threads — collapse by default. */
@@ -157,6 +164,8 @@ export default function LeadDetailPage() {
   const [err, setErr] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [resendState, setResendState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function run() {
@@ -278,6 +287,56 @@ export default function LeadDetailPage() {
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
+  const hasOutbound = emails.some((e) => e.direction === "OUTBOUND");
+  const canResendInitial =
+    lead.status !== "OPTED_OUT" && isValidLeadEmailForResend(lead.email);
+
+  async function reloadLeadDetail() {
+    const res = await fetch(`/api/leads/${id}`, { credentials: "include" });
+    const data = await res.json();
+    if (res.ok && data.lead) {
+      setLead(data.lead);
+      setEmails(data.emails ?? []);
+      setFollowUps(data.follow_ups ?? []);
+    }
+  }
+
+  async function handleResendInitialEmail() {
+    if (!lead || !canResendInitial || resendState === "loading") return;
+    const leadId = lead.id;
+    const confirmMsg = hasOutbound
+      ? "An outbound email was already sent to this lead. Send another initial-style email anyway?"
+      : "Resend the initial outreach email to this lead?";
+    if (!window.confirm(confirmMsg)) return;
+
+    setResendState("loading");
+    setResendMessage(null);
+    try {
+      const res = await fetch(`/api/leads/${leadId}/resend`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: hasOutbound }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResendState("error");
+        setResendMessage(typeof data?.error === "string" ? data.error : `Request failed (${res.status})`);
+        return;
+      }
+      setResendState("success");
+      setResendMessage("Email sent");
+      await reloadLeadDetail();
+      setTimeout(() => {
+        setResendState("idle");
+        setResendMessage(null);
+      }, 4000);
+    } catch {
+      setResendState("error");
+      setResendMessage("Network error");
+    }
+  }
+
   return (
     <main>
       <p>
@@ -297,6 +356,32 @@ export default function LeadDetailPage() {
         <p style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
           Created {new Date(lead.created_at).toLocaleString()} · Updated {new Date(lead.updated_at).toLocaleString()}
         </p>
+        <div style={{ marginTop: "1rem", display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+          <button
+            type="button"
+            className="btn"
+            disabled={!canResendInitial || resendState === "loading"}
+            onClick={() => void handleResendInitialEmail()}
+          >
+            {resendState === "loading" ? "Sending…" : "Resend Initial Email"}
+          </button>
+          {!isValidLeadEmailForResend(lead.email) && (
+            <span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>No valid lead email on file.</span>
+          )}
+          {lead.status === "OPTED_OUT" && (
+            <span style={{ fontSize: "0.8rem", color: "var(--danger)" }}>Lead opted out — cannot send.</span>
+          )}
+          {resendMessage && (
+            <span
+              style={{
+                fontSize: "0.85rem",
+                color: resendState === "error" ? "var(--danger)" : "var(--ok)",
+              }}
+            >
+              {resendMessage}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: "1.5rem" }}>

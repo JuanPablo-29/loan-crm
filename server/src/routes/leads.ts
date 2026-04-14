@@ -6,17 +6,28 @@ import {
   listLeadsForCsvExport,
   listLeadsWithSummary,
   setStuck,
+  touchEngagement,
   updateLeadNotes,
   updateLeadStatus,
 } from "../services/leadRepo.js";
 import { listEmailsForLead } from "../services/emailRepo.js";
 import { listFollowUpsForLead } from "../services/followUpRepo.js";
+import { sendToLead } from "../services/leadOutbound.js";
+import { generatePersonalizedOutboundEmail } from "../services/aiAgent.js";
+import { scheduleFollowUpsForLead } from "../services/followUpQueue.js";
 import type { LeadStatus } from "../types.js";
 import { pool } from "../db/pool.js";
 import { config } from "../config.js";
 import { cancelScheduledFollowUps } from "../services/followUpQueue.js";
 
 export const leadsRouter = Router();
+
+function isValidLeadEmailForOutbound(email: string): boolean {
+  const t = email.trim();
+  if (!t.includes("@")) return false;
+  if (t.toLowerCase().endsWith("@invalid.local")) return false;
+  return true;
+}
 
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -111,6 +122,66 @@ leadsRouter.get("/:id/emails", async (req, res, next) => {
     if (!lead) return res.status(404).json({ error: "Not found" });
     const emails = await listEmailsForLead(lead.id, 100);
     res.json({ emails });
+  } catch (e) {
+    next(e);
+  }
+});
+
+leadsRouter.post("/:id/resend", async (req, res, next) => {
+  try {
+    const lead = await findLeadById(req.params.id);
+    if (!lead) return res.status(404).json({ error: "Not found" });
+
+    if (!isValidLeadEmailForOutbound(lead.email)) {
+      return res.status(400).json({ error: "Lead has no valid email" });
+    }
+
+    const force = req.body?.force === true;
+
+    const { rows: outRows } = await pool.query(
+      `SELECT 1 FROM emails WHERE lead_id = $1 AND direction = 'OUTBOUND' LIMIT 1`,
+      [lead.id]
+    );
+    if (outRows.length > 0 && !force) {
+      return res.status(400).json({ error: "Email already sent" });
+    }
+
+    const thread = await listEmailsForLead(lead.id, 40);
+    const aiDraft = await generatePersonalizedOutboundEmail({
+      lead,
+      thread,
+      objective:
+        "Send the first helpful outreach for this lead: acknowledge their inquiry, offer clear next steps, and invite a reply.",
+      subjectHint: "Your loan inquiry",
+    });
+    const subjBase = aiDraft.subject || "Your loan inquiry";
+    const subj = subjBase.startsWith("Re:") ? subjBase : `Re: ${subjBase}`;
+
+    const dedupKey = force
+      ? `manual_resend_force:${lead.id}:${Date.now()}`
+      : `manual_initial:${lead.id}`;
+
+    const send = await sendToLead({
+      lead,
+      subject: subj,
+      body: aiDraft.body,
+      templateKey: "manual_initial_resend",
+      dedupKey,
+      isManual: true,
+    });
+
+    if (!send.ok) {
+      return res.status(400).json({ error: send.reason ?? "send_failed" });
+    }
+
+    await touchEngagement(lead.id);
+    const after = await findLeadById(lead.id);
+    if (after?.engagement_started_at && !after.archived) {
+      await scheduleFollowUpsForLead(after.id, new Date(after.engagement_started_at));
+    }
+    if (lead.status === "NEW") await updateLeadStatus(lead.id, "CONTACTED");
+
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }
