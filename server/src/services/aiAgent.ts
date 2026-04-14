@@ -103,8 +103,23 @@ function cleanField(value: string | null | undefined): string {
   return v.length > 0 ? v : "Not provided";
 }
 
+function sanitizeBodyForAi(value: string): string {
+  return value
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/\b(?:unsubscribe|manage preferences|view in browser)\b[\s\S]{0,120}/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function clip(value: string, max: number): string {
+  return value.length <= max ? value : `${value.slice(0, Math.max(0, max - 1))}…`;
+}
+
 function buildLeadSummary(lead: Pick<LeadRow, "name" | "email" | "phone" | "property_address" | "intent" | "notes" | "lead_score" | "status">): string {
-  return [
+  const summary = [
     `Lead Name: ${cleanField(lead.name)}`,
     `Lead Email: ${cleanField(lead.email)}`,
     `Lead Phone: ${cleanField(lead.phone)}`,
@@ -114,6 +129,7 @@ function buildLeadSummary(lead: Pick<LeadRow, "name" | "email" | "phone" | "prop
     `Lead Score: ${lead.lead_score}`,
     `Status: ${lead.status}`,
   ].join("\n");
+  return clip(summary, 900);
 }
 
 export async function extractLeadFieldsFromEmail(raw: string): Promise<ExtractedLeadFields> {
@@ -164,7 +180,10 @@ function formatThread(emails: EmailRow[]): string {
   return emails
     .map(
       (e) =>
-        `${e.direction === "INBOUND" ? "Lead" : "Assistant"} (${e.created_at.toISOString()}):\n${e.body_text}`
+        `${e.direction === "INBOUND" ? "Lead" : "Assistant"} (${e.created_at.toISOString()}):\n${clip(
+          sanitizeBodyForAi(e.body_text),
+          320
+        )}`
     )
     .join("\n\n---\n\n");
 }
@@ -177,7 +196,7 @@ export async function generateReply(input: {
   if (!client) {
     return `Hi${input.leadName ? ` ${input.leadName}` : ""},\n\nThanks for reaching out. I can help with next steps and answer any loan questions. If you're open to it, reply with your preferred timeline and loan amount so we can guide you quickly.\n\nReply STOP anytime to opt out.`;
   }
-  const thread = formatThread(input.thread);
+  const thread = clip(formatThread(input.thread), 1800);
   const res = await client.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.7,
@@ -218,7 +237,7 @@ Kari Pastrana`,
   const leadSummary = buildLeadSummary(input.lead);
   const threadText =
     input.thread && input.thread.length > 0
-      ? formatThread(input.thread.slice(-12))
+      ? clip(formatThread(input.thread.slice(-8)), 1000)
       : "No prior email thread.";
   const res = await client.chat.completions.create({
     model: "gpt-4o-mini",
