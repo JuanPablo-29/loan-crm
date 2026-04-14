@@ -21,52 +21,73 @@ type ExtractedLeadFields = {
   lead_score_hint: number | null;
 };
 
-function sanitizeTextField(value: unknown, fieldName: string): string | null {
-  if (typeof value !== "string") {
-    if (value !== null && value !== undefined) {
-      console.warn(`[aiAgent] invalid text value for ${fieldName}:`, value);
-    }
+function toSafeString(value: unknown, fieldName: string): string | null {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  if (!str || NULLISH_TEXT.test(str)) {
+    console.warn(`[aiAgent] invalid text value for ${fieldName}:`, value);
     return null;
   }
-  const trimmed = value.trim();
-  if (!trimmed || NULLISH_TEXT.test(trimmed)) return null;
-  return trimmed;
+  return str;
 }
 
-function sanitizeLeadScoreHint(value: unknown): number | null {
+function toSafeNumber(value: unknown, fieldName: string): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    if (NULLISH_TEXT.test(value.trim())) {
+      console.warn(`[aiAgent] invalid numeric value for ${fieldName}:`, value);
+      return null;
+    }
+    const cleaned = value.replace(/[^\d.]/g, "");
+    const parsed = Number.parseFloat(cleaned);
+    if (Number.isNaN(parsed)) {
+      console.warn(`[aiAgent] invalid numeric value for ${fieldName}:`, value);
+      return null;
+    }
+    return parsed;
+  }
+  if (value !== null && value !== undefined) {
+    console.warn(`[aiAgent] invalid numeric value for ${fieldName}:`, value);
+  }
+  return null;
+}
+
+function mapLeadScore(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
   if (typeof value === "number" && Number.isFinite(value)) {
     return Math.min(100, Math.max(0, Math.trunc(value)));
   }
-  if (typeof value === "string") {
-    const cleaned = value.replace(/[^\d-]/g, "");
-    if (!cleaned || NULLISH_TEXT.test(value.trim())) {
-      console.warn("[aiAgent] invalid numeric value for lead_score_hint:", value);
-      return null;
-    }
-    const parsed = Number.parseInt(cleaned, 10);
-    if (Number.isNaN(parsed)) {
-      console.warn("[aiAgent] invalid numeric value for lead_score_hint:", value);
-      return null;
-    }
-    return Math.min(100, Math.max(0, parsed));
-  }
-  if (value !== null && value !== undefined) {
+  const str = String(value).trim().toLowerCase();
+  if (!str || NULLISH_TEXT.test(str)) {
     console.warn("[aiAgent] invalid numeric value for lead_score_hint:", value);
+    return null;
   }
-  return null;
+  if (str.includes("not prequalified")) return 1;
+  if (str.includes("prequalified")) return 2;
+  if (str.includes("high intent")) return 3;
+
+  const parsed = toSafeNumber(value, "lead_score_hint");
+  if (parsed === null) return null;
+  return Math.min(100, Math.max(0, Math.trunc(parsed)));
+}
+
+function sanitizeBudget(value: unknown): string | null {
+  const n = toSafeNumber(value, "budget");
+  if (n !== null) return Number.isInteger(n) ? `${n}` : `${n}`.replace(/\.0+$/, "");
+  return toSafeString(value, "budget");
 }
 
 function sanitizeExtractedLeadFields(value: unknown): ExtractedLeadFields {
   const src = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   return {
-    name: sanitizeTextField(src.name, "name"),
-    email: sanitizeTextField(src.email, "email"),
-    phone: sanitizeTextField(src.phone, "phone"),
-    property_address: sanitizeTextField(src.property_address, "property_address"),
-    budget: sanitizeTextField(src.budget, "budget"),
-    notes: sanitizeTextField(src.notes, "notes"),
-    intent: sanitizeTextField(src.intent, "intent") ?? "inquiry",
-    lead_score_hint: sanitizeLeadScoreHint(src.lead_score_hint),
+    name: toSafeString(src.name, "name"),
+    email: toSafeString(src.email, "email"),
+    phone: toSafeString(src.phone, "phone"),
+    property_address: toSafeString(src.property_address, "property_address"),
+    budget: sanitizeBudget(src.budget),
+    notes: toSafeString(src.notes, "notes"),
+    intent: toSafeString(src.intent, "intent") ?? "inquiry",
+    lead_score_hint: mapLeadScore(src.lead_score_hint),
   };
 }
 
