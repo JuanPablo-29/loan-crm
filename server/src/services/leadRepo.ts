@@ -2,10 +2,15 @@ import type { LeadRow, LeadStatus } from "../types.js";
 import { pool } from "../db/pool.js";
 import { generateRedirectToken, generateUnsubscribeToken } from "../utils/tokens.js";
 
+const NULLISH_NUMERIC_TEXT = /^(?:n\/a|na|none|null|unknown|)$/i;
+
 function toSafeInt(value: unknown, fieldName: string): number | null {
+  if (value === null || value === undefined) return null;
   if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
   if (typeof value === "string") {
-    const cleaned = value.replace(/[^\d-]/g, "");
+    const trimmed = value.trim();
+    if (!trimmed || NULLISH_NUMERIC_TEXT.test(trimmed)) return null;
+    const cleaned = trimmed.replace(/[^\d-]/g, "");
     if (!cleaned) {
       console.warn(`[leadRepo] invalid numeric value for ${fieldName}:`, value);
       return null;

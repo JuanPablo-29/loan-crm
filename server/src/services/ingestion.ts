@@ -153,6 +153,17 @@ function nullIfUnknown(value: string | null): string | null {
   return value.trim().toLowerCase() === "unknown" ? null : value;
 }
 
+/** Human-readable line in AI prompts only; never persist this text as field data. */
+function promptField(value: string | null | undefined): string {
+  const v = value?.trim();
+  if (!v || v.toLowerCase() === "unknown") return "Not provided";
+  return v;
+}
+
+function promptBudget(budget: number | null): string {
+  return budget != null ? String(budget) : "Not provided";
+}
+
 function hasValidEmail(lead: { email?: string | null; declinedEmail?: boolean }): boolean {
   if (lead.declinedEmail) return false;
   return !!lead.email && lead.email.includes("@");
@@ -365,7 +376,7 @@ function buildAiExtractionPrompt(input: {
     ? truncate(input.cleanedLead.message, 700)
     : `No direct customer message provided. Use only name/location context:
 Name: ${input.cleanedLead.name || "there"}
-Location: ${input.cleanedLead.address || "unknown"}`;
+Location: ${promptField(input.cleanedLead.address)}`;
 
   const prompt = `You are extracting structured data for a mortgage CRM. Return valid JSON only with keys:
 name, email, phone, property_address, budget, notes, intent, lead_score_hint.
@@ -374,16 +385,17 @@ Context:
 From: ${input.fromEmail}
 Subject: ${input.subject ?? ""}
 Name: ${input.cleanedLead.name || "there"}
-Phone: ${input.cleanedLead.phone || "unknown"}
-Location: ${input.cleanedLead.address || "unknown"}
-Budget: ${input.cleanedLead.budget ?? "unknown"}
+Phone: ${promptField(input.cleanedLead.phone)}
+Location: ${promptField(input.cleanedLead.address)}
+Budget: ${promptBudget(input.cleanedLead.budget)}
 
 Customer Message:
 ${customerMessage}
 
 Rules:
 - Do not invent missing fields.
-- Keep budget as text.
+- Use JSON null for any missing or unavailable field (never the string "unknown").
+- Keep budget as text when a concrete amount is known; otherwise null.
 - lead_score_hint must be numeric when possible, otherwise null.
 - Ignore signatures, legal disclaimers, links, and HTML markup.`;
 

@@ -33,13 +33,12 @@ function toSafeString(value: unknown, fieldName: string): string | null {
 }
 
 function toSafeNumber(value: unknown, fieldName: string): number | null {
+  if (value === null || value === undefined) return null;
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
-    if (NULLISH_TEXT.test(value.trim())) {
-      console.warn(`[aiAgent] invalid numeric value for ${fieldName}:`, value);
-      return null;
-    }
-    const cleaned = value.replace(/[^\d.]/g, "");
+    const trimmed = value.trim();
+    if (!trimmed || NULLISH_TEXT.test(trimmed)) return null;
+    const cleaned = trimmed.replace(/[^\d.]/g, "");
     const parsed = Number.parseFloat(cleaned);
     if (Number.isNaN(parsed)) {
       console.warn(`[aiAgent] invalid numeric value for ${fieldName}:`, value);
@@ -47,9 +46,7 @@ function toSafeNumber(value: unknown, fieldName: string): number | null {
     }
     return parsed;
   }
-  if (value !== null && value !== undefined) {
-    console.warn(`[aiAgent] invalid numeric value for ${fieldName}:`, value);
-  }
+  console.warn(`[aiAgent] invalid numeric value for ${fieldName}:`, value);
   return null;
 }
 
@@ -59,10 +56,7 @@ function mapLeadScore(value: unknown): number | null {
     return Math.min(100, Math.max(0, Math.trunc(value)));
   }
   const str = String(value).trim().toLowerCase();
-  if (!str || NULLISH_TEXT.test(str)) {
-    console.warn("[aiAgent] invalid numeric value for lead_score_hint:", value);
-    return null;
-  }
+  if (!str || NULLISH_TEXT.test(str)) return null;
   if (str.includes("not prequalified")) return 1;
   if (str.includes("prequalified")) return 2;
   if (str.includes("high intent")) return 3;
@@ -73,6 +67,7 @@ function mapLeadScore(value: unknown): number | null {
 }
 
 function sanitizeBudget(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
   const n = toSafeNumber(value, "budget");
   if (n !== null) return Number.isInteger(n) ? `${n}` : `${n}`.replace(/\.0+$/, "");
   return toSafeString(value, "budget");
