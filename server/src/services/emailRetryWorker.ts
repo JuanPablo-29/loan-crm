@@ -58,6 +58,22 @@ export async function retryFailedEmails(): Promise<void> {
 
     if (sent.ok) {
       await pool.query(`UPDATE failed_emails SET status = 'sent' WHERE id = $1`, [row.id]);
+      const leadResult = await pool.query<{ id: string; status: string }>(
+        `SELECT id, status FROM leads
+         WHERE lower(email) = lower($1)
+         LIMIT 1`,
+        [row.to_email]
+      );
+      const lead = leadResult.rows[0];
+      if (lead && (lead.status === "NEW" || lead.status === "MANUAL_FOLLOW_UP")) {
+        await pool.query(
+          `UPDATE leads
+           SET status = 'CONTACTED', updated_at = now()
+           WHERE id = $1`,
+          [lead.id]
+        );
+        console.log("Lead marked CONTACTED after retry:", lead.id);
+      }
       continue;
     }
 
