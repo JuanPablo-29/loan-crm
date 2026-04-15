@@ -174,6 +174,22 @@ leadsRouter.post("/:id/resend", async (req, res, next) => {
       return res.status(400).json({ error: send.reason ?? "send_failed" });
     }
 
+    const cleared = await pool.query(
+      `UPDATE failed_emails
+       SET status = 'sent',
+           error = CASE
+             WHEN error IS NOT NULL AND btrim(error) <> ''
+             THEN btrim(error) || E'\nResolved via manual resend'
+             ELSE 'Resolved via manual resend'
+           END
+       WHERE lower(btrim(to_email)) = lower(btrim($1::text))
+         AND status IN ('pending', 'retrying')`,
+      [lead.email]
+    );
+    if ((cleared.rowCount ?? 0) > 0) {
+      console.log("Cleared queued emails after manual resend:", lead.email);
+    }
+
     await touchEngagement(lead.id);
     const after = await findLeadById(lead.id);
     if (after?.engagement_started_at && !after.archived) {
