@@ -195,7 +195,9 @@ leadsRouter.post("/:id/resend", async (req, res, next) => {
     if (after?.engagement_started_at && !after.archived) {
       await scheduleFollowUpsForLead(after.id, new Date(after.engagement_started_at));
     }
-    if (lead.status === "NEW") await updateLeadStatus(lead.id, "CONTACTED");
+    if (lead.status === "NEW" || lead.status === "MANUAL_FOLLOW_UP") {
+      await updateLeadStatus(lead.id, "CONTACTED");
+    }
 
     res.json({ ok: true });
   } catch (e) {
@@ -223,6 +225,7 @@ const patchSchema = z.object({
   status: z
     .enum([
       "NEW",
+      "MANUAL_FOLLOW_UP",
       "CONTACTED",
       "FOLLOW_UP",
       "ENGAGED",

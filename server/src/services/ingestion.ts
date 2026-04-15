@@ -439,7 +439,12 @@ export async function ingestRawEmail(input: {
       notes: extracted.notes ?? cleanedLead.message,
       intent: extracted.intent,
       lead_score: extracted.lead_score_hint ?? undefined,
+      status: usingLeadEmail ? "NEW" : "MANUAL_FOLLOW_UP",
     });
+  } else if (!usingLeadEmail && lead.status === "NEW") {
+    await cancelScheduledFollowUps(lead.id);
+    await updateLeadStatus(lead.id, "MANUAL_FOLLOW_UP");
+    lead = (await findLeadByEmail(storageEmail)) ?? lead;
   }
 
   await insertEmail({
@@ -509,7 +514,9 @@ export async function ingestRawEmail(input: {
     if (updated?.engagement_started_at && !updated.archived) {
       await scheduleFollowUpsForLead(updated.id, new Date(updated.engagement_started_at));
     }
-    if (current.status === "NEW") await updateLeadStatus(current.id, "CONTACTED");
+    if (current.status === "NEW" || current.status === "MANUAL_FOLLOW_UP") {
+      await updateLeadStatus(current.id, "CONTACTED");
+    }
   }
 
   return { leadId: current.id, optedOut: false, replied: send.ok };

@@ -166,13 +166,15 @@ export async function createLead(input: {
   notes?: string | null;
   intent?: string | null;
   lead_score?: number | string | null;
+  status?: LeadStatus;
 }): Promise<LeadRow> {
   const score = sanitizeLeadScore(input.lead_score, input.intent);
   const redirectToken = generateRedirectToken();
   const unsubscribeToken = generateUnsubscribeToken();
+  const status = input.status ?? "NEW";
   const { rows } = await pool.query<LeadRow>(
-    `INSERT INTO leads (name, email, phone, property_address, notes, intent, lead_score, redirect_token, unsubscribe_token)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO leads (name, email, phone, property_address, notes, intent, lead_score, redirect_token, unsubscribe_token, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (email) DO UPDATE SET
        name = COALESCE(EXCLUDED.name, leads.name),
        phone = COALESCE(EXCLUDED.phone, leads.phone),
@@ -194,6 +196,7 @@ export async function createLead(input: {
       score,
       redirectToken,
       unsubscribeToken,
+      status,
     ]
   );
   return rows[0];

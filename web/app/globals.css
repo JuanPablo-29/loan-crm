@@ -78,6 +78,11 @@ main {
   color: var(--warn);
 }
 
+.tag.manual {
+  background: rgba(245, 140, 66, 0.18);
+  color: #f5a84a;
+}
+
 .tag.danger {
   background: rgba(245, 95, 78, 0.15);
   color: var(--danger);

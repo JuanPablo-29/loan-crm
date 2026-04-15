@@ -48,11 +48,16 @@ type TimelineEvent = {
 
 function statusClass(s: string) {
   if (s === "OPTED_OUT") return "tag danger";
+  if (s === "MANUAL_FOLLOW_UP") return "tag manual";
   if (s === "FOLLOW_UP") return "tag warn";
   if (s === "ENGAGED") return "tag engaged";
   if (s === "CONTACTED") return "tag ok";
   if (s === "NEW") return "tag new";
   return "tag";
+}
+
+function statusDisplayLabel(s: string) {
+  return s === "MANUAL_FOLLOW_UP" ? "Manual Follow-Up" : s;
 }
 
 function isValidLeadEmailForResend(email: string): boolean {
@@ -349,7 +354,7 @@ export default function LeadDetailPage() {
         {lead.phone && <p style={{ margin: "0.25rem 0" }}>Phone: {lead.phone}</p>}
         {lead.property_address && <p style={{ margin: "0.25rem 0" }}>Property address: {lead.property_address}</p>}
         <p style={{ margin: "0.75rem 0" }}>
-          <span className={statusClass(lead.status)}>{lead.status}</span>{" "}
+          <span className={statusClass(lead.status)}>{statusDisplayLabel(lead.status)}</span>{" "}
           <span style={{ color: "var(--muted)", marginLeft: 8 }}>Score {lead.lead_score}</span>
         </p>
         {lead.intent && <p>Intent: {lead.intent}</p>}

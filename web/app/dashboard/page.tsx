@@ -27,7 +27,15 @@ type Lead = {
   email_delivery_status?: "queued" | "failed" | "sent";
 };
 
-const STATUSES = ["", "NEW", "CONTACTED", "FOLLOW_UP", "ENGAGED", "OPTED_OUT"];
+const STATUSES = [
+  "",
+  "NEW",
+  "MANUAL_FOLLOW_UP",
+  "CONTACTED",
+  "FOLLOW_UP",
+  "ENGAGED",
+  "OPTED_OUT",
+];
 
 const SORTS: { value: string; label: string }[] = [
   { value: "updated", label: "Most recently updated" },
@@ -38,11 +46,17 @@ const SORTS: { value: string; label: string }[] = [
 
 function statusClass(s: string) {
   if (s === "OPTED_OUT") return "tag danger";
+  if (s === "MANUAL_FOLLOW_UP") return "tag manual";
   if (s === "FOLLOW_UP") return "tag warn";
   if (s === "ENGAGED") return "tag engaged";
   if (s === "CONTACTED") return "tag ok";
   if (s === "NEW") return "tag new";
   return "tag";
+}
+
+function statusLabel(s: string) {
+  if (s === "MANUAL_FOLLOW_UP") return "Manual Follow-Up";
+  return s;
 }
 
 function formatShort(iso: string | null) {
@@ -166,7 +180,7 @@ export default function DashboardPage() {
           >
             {STATUSES.map((s) => (
               <option key={s || "all"} value={s}>
-                {s || "All"}
+                {s === "" ? "All" : s === "MANUAL_FOLLOW_UP" ? "Manual leads" : s}
               </option>
             ))}
           </select>
@@ -191,6 +205,30 @@ export default function DashboardPage() {
         <a href="/dashboard/csv" className="btn" style={{ textDecoration: "none" }}>
           CSV
         </a>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: "0.5rem 0.75rem",
+            borderLeft: "1px solid var(--border)",
+            paddingLeft: "1rem",
+            marginLeft: "0.25rem",
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              window.location.href = "/api/auth/google";
+            }}
+          >
+            Reconnect Gmail
+          </button>
+          <span style={{ fontSize: "0.8rem", color: "var(--muted)", maxWidth: 260, lineHeight: 1.35 }}>
+            Gmail not working? Reconnect here.
+          </span>
+        </div>
       </div>
 
       <p style={{ fontSize: "0.85rem", color: "var(--muted)", marginTop: 0 }}>
@@ -229,7 +267,7 @@ export default function DashboardPage() {
                 const rowHighlight =
                   l.stale_no_reply || l.stuck_suggestion
                     ? "rgba(245, 165, 36, 0.08)"
-                    : l.status === "NEW"
+                    : l.status === "NEW" || l.status === "MANUAL_FOLLOW_UP"
                       ? "rgba(61, 139, 253, 0.06)"
                       : undefined;
                 const engaged = Boolean(l.clicked_at || l.engaged_at || l.status === "ENGAGED");
@@ -273,7 +311,7 @@ export default function DashboardPage() {
                       {truncateAddress(l.property_address)}
                     </td>
                     <td style={{ padding: "0.65rem 0.5rem", verticalAlign: "top" }}>
-                      <span className={statusClass(l.status)}>{l.status}</span>
+                      <span className={statusClass(l.status)}>{statusLabel(l.status)}</span>
                       <div style={{ color: "var(--muted)", fontSize: "0.75rem", marginTop: 6 }}>Score {l.lead_score}</div>
                     </td>
                     <td style={{ padding: "0.65rem 0.5rem", verticalAlign: "top" }}>

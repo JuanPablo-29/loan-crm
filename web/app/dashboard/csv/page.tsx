@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type CsvRow = {
   name: string;
@@ -55,6 +56,7 @@ function parseCsv(text: string): CsvRow[] {
 }
 
 export default function CsvPage() {
+  const router = useRouter();
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -85,6 +87,11 @@ export default function CsvPage() {
 
   return (
     <main>
+      <div style={{ marginBottom: "1rem" }}>
+        <button type="button" className="btn" onClick={() => router.push("/dashboard")}>
+          ← Back to Dashboard
+        </button>
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
         <h1 style={{ margin: 0, flex: "1 1 auto" }}>Leads CSV</h1>
         <a className="btn btn-primary" href="/api/leads/export/csv">

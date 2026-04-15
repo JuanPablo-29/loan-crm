@@ -30,6 +30,7 @@ export async function canSendToLead(
   options?: { bypassInterSendThrottle?: boolean }
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (lead.status === "OPTED_OUT") return { ok: false, reason: "opted_out" };
+  if (lead.status === "MANUAL_FOLLOW_UP") return { ok: false, reason: "manual_follow_up" };
   const n = await countOutboundLast24h(lead.id);
   if (n >= config.maxEmailsPerLeadPerDay) return { ok: false, reason: "daily_cap" };
   if (!options?.bypassInterSendThrottle && lead.last_outbound_at) {

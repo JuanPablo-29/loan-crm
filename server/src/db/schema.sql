@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS leads (
   phone TEXT,
   intent TEXT,
   status TEXT NOT NULL DEFAULT 'NEW' CHECK (status IN (
-    'NEW','CONTACTED','FOLLOW_UP','ENGAGED','OPTED_OUT'
+    'NEW','MANUAL_FOLLOW_UP','CONTACTED','FOLLOW_UP','ENGAGED','OPTED_OUT'
   )),
   engagement_started_at TIMESTAMPTZ,
   last_outbound_at TIMESTAMPTZ,
@@ -86,10 +86,16 @@ UPDATE leads SET status = 'FOLLOW_UP' WHERE status IN (
   'MISSING_DOCUMENTS','PENDING_DOCS','DOCUMENTS_REQUESTED'
 );
 UPDATE leads SET status = 'CONTACTED' WHERE status NOT IN (
-  'NEW','CONTACTED','FOLLOW_UP','ENGAGED','OPTED_OUT'
+  'NEW','MANUAL_FOLLOW_UP','CONTACTED','FOLLOW_UP','ENGAGED','OPTED_OUT'
 );
+
+-- Placeholder no-email addresses → manual follow-up (idempotent classification).
+UPDATE leads SET status = 'MANUAL_FOLLOW_UP'
+WHERE lower(email) LIKE '%@invalid.local'
+  AND status NOT IN ('OPTED_OUT', 'ENGAGED');
+
 ALTER TABLE leads ADD CONSTRAINT leads_status_check CHECK (status IN (
-  'NEW','CONTACTED','FOLLOW_UP','ENGAGED','OPTED_OUT'
+  'NEW','MANUAL_FOLLOW_UP','CONTACTED','FOLLOW_UP','ENGAGED','OPTED_OUT'
 ));
 
 CREATE TABLE IF NOT EXISTS send_dedup (

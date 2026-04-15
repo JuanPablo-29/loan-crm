@@ -1,5 +1,6 @@
 export type LeadStatus =
   | "NEW"
+  | "MANUAL_FOLLOW_UP"
   | "CONTACTED"
   | "FOLLOW_UP"
   | "ENGAGED"

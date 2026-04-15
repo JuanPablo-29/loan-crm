@@ -20,7 +20,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function scheduleFollowUpsForLead(leadId: string, from: Date): Promise<void> {
   const lead = await findLeadById(leadId);
-  if (!lead || lead.archived || lead.status === "OPTED_OUT") return;
+  if (!lead || lead.archived || lead.status === "OPTED_OUT" || lead.status === "MANUAL_FOLLOW_UP") return;
 
   const { rows: existing } = await pool.query(`SELECT 1 FROM follow_ups WHERE lead_id = $1 LIMIT 1`, [
     leadId,
@@ -71,7 +71,7 @@ async function processFollowUp(job: Job<FollowUpJob>): Promise<void> {
     );
     return;
   }
-  if (lead.status === "OPTED_OUT" || lead.status === "ENGAGED") return;
+  if (lead.status === "OPTED_OUT" || lead.status === "ENGAGED" || lead.status === "MANUAL_FOLLOW_UP") return;
   if (lead.clicked_at || lead.engaged_at) return;
   if (await hasLeadRepliedAfterLastOutbound(leadId)) return;
 
