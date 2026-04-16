@@ -10,9 +10,9 @@ import {
 import { insertEmail, listEmailsForLead } from "./emailRepo.js";
 import { extractLeadFieldsFromEmail, generatePersonalizedOutboundEmail } from "./aiAgent.js";
 import { emailComplianceFooter, sendToLead } from "./leadOutbound.js";
+import { getNoEmailManualForwardRecipient, getSafeRecipient } from "./emailRouting.js";
 import { sendMail } from "./outboundMail.js";
 import { scheduleFollowUpsForLead, cancelScheduledFollowUps } from "./followUpQueue.js";
-import { config } from "../config.js";
 
 const OPT_OUT_RE = /\b(stop|unsubscribe|opt\s*out|remove\s+me|do\s+not\s+contact|cancel)\b/i;
 const AI_EXTRACTION_PROMPT_MAX_CHARS = 2000;
@@ -180,14 +180,6 @@ function noEmailFallbackAddress(seed: string): string {
   return `noemail+${compact}-${Date.now()}@invalid.local`;
 }
 
-function getLoanOfficerRecipientEmail(): string {
-  const envOfficer = process.env.LOAN_OFFICER_EMAIL?.trim();
-  if (envOfficer) return envOfficer;
-  const fromMatch = config.emailFrom.match(/<([^>]+)>/);
-  if (fromMatch?.[1]) return fromMatch[1].trim();
-  return config.emailFrom.trim();
-}
-
 function normalizePhoneDigits(value: string): string {
   return value.replace(/[^\d]/g, "");
 }
@@ -241,7 +233,13 @@ async function forwardLeadToLoanOfficer(input: { leadId: string; lead: CleanLead
       <p><strong>Message:</strong><br/>${(input.lead.message || "No message provided").replace(/\n/g, "<br/>")}</p>
     </div>
   `;
-  const to = getLoanOfficerRecipientEmail();
+  const to = getNoEmailManualForwardRecipient();
+  if (!to) {
+    console.warn("[ingest] Skipping no-email lead forward — set NO_EMAIL_FALLBACK to a non-officer inbox", {
+      leadId: input.leadId,
+    });
+    return;
+  }
   const result = await sendMail({
     to,
     subject,
@@ -249,10 +247,10 @@ async function forwardLeadToLoanOfficer(input: { leadId: string; lead: CleanLead
     html,
   });
   if (!result.ok) {
-    console.warn("[ingest] failed to forward no-email lead to loan officer", { leadId: input.leadId, to });
+    console.warn("[ingest] failed to forward no-email lead alert", { leadId: input.leadId, to });
     return;
   }
-  console.log("Forwarded no-email lead to loan officer:", input.leadId);
+  console.log("Forwarded no-email lead alert:", input.leadId, { to });
 }
 
 /** Parse large raw/HTML lead emails down to the fields we need for AI extraction/personalization. */
@@ -474,11 +472,16 @@ export async function ingestRawEmail(input: {
     const ack =
       "We've removed you from automated follow-ups. If you need help in the future, you can reach us anytime.";
     const ackBody = `${ack}${emailComplianceFooter(current)}`;
-    await sendMail({
-      to: current.email,
-      subject: "You are unsubscribed",
-      text: ackBody,
-    });
+    const optOutTo = getSafeRecipient(current);
+    if (optOutTo) {
+      await sendMail({
+        to: optOutTo,
+        subject: "You are unsubscribed",
+        text: ackBody,
+      });
+    } else {
+      console.error("[email-routing] No valid recipient for opt-out ack; skipping send", { leadId: current.id });
+    }
     await insertEmail({
       lead_id: current.id,
       direction: "OUTBOUND",

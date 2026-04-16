@@ -1,6 +1,7 @@
 import type { LeadRow } from "../types.js";
 import { config } from "../config.js";
 import { countOutboundLast24h, insertEmail } from "./emailRepo.js";
+import { getSafeRecipient } from "./emailRouting.js";
 import { setLastOutbound } from "./leadRepo.js";
 import { sendMail } from "./outboundMail.js";
 import { pool } from "../db/pool.js";
@@ -70,8 +71,14 @@ export async function sendToLead(input: SendToLeadInput): Promise<{ ok: boolean;
     ? `${input.body}${cta}`
     : `${input.body}${cta}${unsubscribeFooter(input.lead)}`;
 
+  const to = getSafeRecipient(input.lead);
+  if (!to) {
+    console.error("[email-routing] No valid recipient, aborting send", { leadId: input.lead.id, email: input.lead.email });
+    return { ok: false, reason: "no_valid_recipient" };
+  }
+
   const mail = await sendMail({
-    to: input.lead.email,
+    to,
     subject: input.subject,
     text,
   });

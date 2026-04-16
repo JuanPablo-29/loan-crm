@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { config } from "../config.js";
 import { pool } from "../db/pool.js";
+import { assertNotLoanOfficerOutboundRecipient } from "./emailRouting.js";
 import { buildEmailSignatureHtml } from "../utils/emailSignature.js";
 
 export type SendEmailInput = {
@@ -76,6 +77,8 @@ export async function sendEmail(
   if (!process.env.RESEND_API_KEY?.trim()) {
     throw new Error("RESEND_API_KEY is not configured");
   }
+
+  assertNotLoanOfficerOutboundRecipient(input.to);
 
   const delivery = await deliverViaResend(input);
   if (delivery.ok) {
