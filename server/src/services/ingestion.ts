@@ -422,7 +422,17 @@ export async function ingestRawEmail(input: {
   });
   const extracted = await extractLeadFieldsFromEmail(extractionPrompt);
   const declinedEmail = /declined to provide email/i.test(input.rawBody);
-  const extractedEmail = normalizeOptionalEmail(extracted.email ?? cleanedLead.email);
+  const aiEmail = normalizeOptionalEmail(extracted.email);
+  const parsedEmail = normalizeOptionalEmail(cleanedLead.email);
+  const officerEmailLower = process.env.LOAN_OFFICER_EMAIL?.trim().toLowerCase() ?? "";
+  /** Prefer parsed lead email when AI returns the loan officer address from signatures / forwards. */
+  let extractedEmail = aiEmail ?? parsedEmail;
+  if (officerEmailLower && extractedEmail === officerEmailLower) {
+    extractedEmail = parsedEmail && parsedEmail !== officerEmailLower ? parsedEmail : null;
+  }
+  if (officerEmailLower && extractedEmail === officerEmailLower) {
+    extractedEmail = null;
+  }
   const usingLeadEmail = hasValidEmail({ email: extractedEmail, declinedEmail });
   const storageEmail = usingLeadEmail
     ? normalizeEmail(extractedEmail as string)
