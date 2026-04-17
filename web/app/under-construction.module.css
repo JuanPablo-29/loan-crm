@@ -1,0 +1,118 @@
+.wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  color: #1a2332;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.topBar {
+  flex-shrink: 0;
+  padding: 0.75rem 1.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #3d6b52;
+  border-bottom: 1px solid rgba(61, 107, 82, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem 3rem;
+  position: relative;
+}
+
+.ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.orb {
+  position: absolute;
+  width: min(72vw, 420px);
+  height: min(72vw, 420px);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -52%);
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(122, 186, 148, 0.35) 0%,
+    rgba(168, 214, 186, 0.18) 42%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  filter: blur(2px);
+  animation: orbPulse 10s ease-in-out infinite;
+}
+
+@keyframes orbPulse {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: translate(-50%, -52%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -52%) scale(1.06);
+  }
+}
+
+.divider {
+  width: 48px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(61, 107, 82, 0.15), rgba(122, 186, 148, 0.65), rgba(61, 107, 82, 0.15));
+  margin: 0 auto 1.75rem;
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  max-width: 32rem;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(61, 107, 82, 0.1);
+  box-shadow:
+    0 1px 2px rgba(26, 35, 50, 0.04),
+    0 24px 48px -24px rgba(61, 107, 82, 0.18);
+}
+
+.headline {
+  margin: 0 0 1rem;
+  font-size: clamp(1.65rem, 4.5vw, 2.125rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #152018;
+}
+
+.subhead {
+  margin: 0 0 1.25rem;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: #4a5c66;
+}
+
+.thanks {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #6b7d88;
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 2rem 1.35rem;
+  }
+}
