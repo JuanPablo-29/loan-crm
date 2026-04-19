@@ -4,31 +4,44 @@ function normalizeRecipientEmail(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }
 
-/** Alerts for leads without a reachable address — must never be LOAN_OFFICER_EMAIL. */
-export function getNoEmailManualForwardRecipient(): string | null {
+function normalizedIngestInbox(): string {
+  return normalizeRecipientEmail(process.env.INGEST_INBOX_EMAIL);
+}
+
+/**
+ * Normalized `NO_EMAIL_FALLBACK` when set and valid, or `null` when unset/invalid
+ * or when it would equal the Gmail ingest inbox (loop risk).
+ */
+function resolveNoEmailFallbackRecipient(): string | null {
   const fb = normalizeRecipientEmail(process.env.NO_EMAIL_FALLBACK);
   if (!fb || !fb.includes("@")) {
-    console.error("[email-routing] NO_EMAIL_FALLBACK is missing or invalid; cannot send no-email lead alert");
     return null;
   }
-  const officer = normalizeRecipientEmail(process.env.LOAN_OFFICER_EMAIL);
-  if (officer && fb === officer) {
-    console.error("[email-routing] NO_EMAIL_FALLBACK must not equal LOAN_OFFICER_EMAIL");
+  const ingest = normalizedIngestInbox();
+  if (ingest && fb === ingest) {
+    console.warn("[email-routing] NO_EMAIL_FALLBACK matches ingest inbox; blocked to prevent loops");
     return null;
   }
   return fb;
 }
 
+/** Alerts for leads without a reachable address — uses `NO_EMAIL_FALLBACK` unless it matches the ingest inbox. */
+export function getNoEmailManualForwardRecipient(): string | null {
+  const resolved = resolveNoEmailFallbackRecipient();
+  if (!resolved) {
+    console.error("[email-routing] NO_EMAIL_FALLBACK is missing, invalid, or blocked; cannot send no-email lead alert");
+    return null;
+  }
+  return resolved;
+}
+
 /**
- * Single source of truth for CRM outbound recipient: lead inbox, or NO_EMAIL_FALLBACK — never LOAN_OFFICER_EMAIL.
+ * CRM outbound recipient: lead inbox when valid, else `NO_EMAIL_FALLBACK` if configured and safe.
+ * `NO_EMAIL_FALLBACK` may equal `LOAN_OFFICER_EMAIL` unless it matches `INGEST_INBOX_EMAIL` (loop risk).
  */
 export function getSafeRecipient(lead: Pick<LeadRow, "email">): string | null {
   const loanOfficerEmail = normalizeRecipientEmail(process.env.LOAN_OFFICER_EMAIL);
-  let fallbackEmail = normalizeRecipientEmail(process.env.NO_EMAIL_FALLBACK);
-  if (fallbackEmail && loanOfficerEmail && fallbackEmail === loanOfficerEmail) {
-    console.error("[email-routing] NO_EMAIL_FALLBACK must not equal LOAN_OFFICER_EMAIL; treating as unset");
-    fallbackEmail = "";
-  }
+  const fallbackEmail = resolveNoEmailFallbackRecipient() ?? "";
 
   const useFallback = (): string | null => {
     if (fallbackEmail && fallbackEmail.includes("@")) return fallbackEmail;
@@ -51,11 +64,17 @@ export function getSafeRecipient(lead: Pick<LeadRow, "email">): string | null {
   return final;
 }
 
-/** Hard stop before any Resend call — prevents regressions. */
+/**
+ * Hard stop before Resend — blocks accidental CRM sends to the loan officer inbox
+ * except when that address is explicitly the configured no-email fallback (and not ingest-blocked).
+ */
 export function assertNotLoanOfficerOutboundRecipient(to: string): void {
   const t = normalizeRecipientEmail(to);
   const officer = normalizeRecipientEmail(process.env.LOAN_OFFICER_EMAIL);
-  if (officer && t === officer) {
-    throw new Error("CRITICAL: Attempted to send email to loan officer");
-  }
+  if (!officer || t !== officer) return;
+
+  const allowedFallback = resolveNoEmailFallbackRecipient();
+  if (allowedFallback && t === allowedFallback) return;
+
+  throw new Error("CRITICAL: Attempted to send email to loan officer");
 }

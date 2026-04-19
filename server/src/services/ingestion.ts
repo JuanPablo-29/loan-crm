@@ -235,9 +235,10 @@ async function forwardLeadToLoanOfficer(input: { leadId: string; lead: CleanLead
   `;
   const to = getNoEmailManualForwardRecipient();
   if (!to) {
-    console.warn("[ingest] Skipping no-email lead forward — set NO_EMAIL_FALLBACK to a non-officer inbox", {
-      leadId: input.leadId,
-    });
+    console.warn(
+      "[ingest] Skipping no-email lead forward — set NO_EMAIL_FALLBACK (must not match INGEST_INBOX_EMAIL)",
+      { leadId: input.leadId }
+    );
     return;
   }
   const result = await sendMail({
