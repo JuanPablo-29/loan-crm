@@ -243,7 +243,7 @@ Kari Pastrana`,
       {
         role: "system",
         content:
-          "You are an email assistant for Kari Pastrana, a professional loan officer. Generate concise, natural, personalized outbound emails. Use a warm and professional tone. Avoid generic phrasing. Address the lead by name when available, reference their specific situation from provided fields, avoid repetition, and include a subtle call-to-action. Return strict JSON with keys: subject, body.",
+          "You are an email assistant for Kari Pastrana, a professional loan officer. Generate concise, natural, personalized outbound emails. Use a warm and professional tone. Avoid generic phrasing. Address the lead by name when available, reference their specific situation from provided fields, avoid repetition, and include a subtle call-to-action (e.g. invite a reply). Do not name a mortgage company, bank, broker employer, corporate website, or institutional regulatory/EHL-style disclosures unless the lead explicitly quoted that brand first. Return strict JSON with keys: subject, body.",
       },
       {
         role: "user",
@@ -261,6 +261,7 @@ Kari Pastrana`,
           "- Write body text only (no HTML).",
           '- Sign off as "Kari Pastrana".',
           "- Do not include links; links and unsubscribe text are added downstream.",
+          "- Do not mention application URLs, apply buttons, or company career moves.",
           "- Keep body around 90-160 words unless conversation context requires slightly more.",
         ].join("\n"),
       },

@@ -48,6 +48,7 @@ export type SendToLeadInput = {
   templateKey: string;
   dedupKey: string;
   skipFooter?: boolean;
+  /** When false, never appends the application link. When true/omitted, link is appended only if `APPLICATION_LINK_ENABLED=true`. */
   includeTrackedLink?: boolean;
   /** Dashboard manual send: bypass min-minutes-between-sends (still enforces opt-out + daily cap). */
   isManual?: boolean;
@@ -65,8 +66,10 @@ export async function sendToLead(input: SendToLeadInput): Promise<{ ok: boolean;
   ]);
   if (dup.rowCount && dup.rowCount > 0) return { ok: false, reason: "duplicate" };
 
+  const showApplicationLink = config.applicationLinkEnabled;
   const trackedLink = trackedApplicationLink(input.lead);
-  const cta = input.includeTrackedLink === false ? "" : `\n\nApplication link: ${trackedLink}`;
+  const cta =
+    input.includeTrackedLink === false || !showApplicationLink ? "" : `\n\nApplication link: ${trackedLink}`;
   const text = input.skipFooter
     ? `${input.body}${cta}`
     : `${input.body}${cta}${unsubscribeFooter(input.lead)}`;

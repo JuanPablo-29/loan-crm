@@ -31,6 +31,8 @@ export const config = {
   autoPollMinutes: Number(process.env.AUTO_POLL_MINUTES ?? 3),
   maxEmailsPerLeadPerDay: Number(process.env.MAX_EMAILS_PER_LEAD_PER_DAY ?? 8),
   minMinutesBetweenSends: Number(process.env.MIN_MINUTES_BETWEEN_SENDS ?? 5),
+  /** When true, outbound lead emails include the tracked application link in the plain body and legacy HTML apply button (if configured). */
+  applicationLinkEnabled: process.env.APPLICATION_LINK_ENABLED === "true",
   auth: {
     sessionCookieName: process.env.SESSION_COOKIE_NAME ?? "loancrm_session",
     sessionSecret: req("SESSION_SECRET", "dev-insecure-change-me"),
